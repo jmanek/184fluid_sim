@@ -137,14 +137,14 @@ Viewport    viewport;
 BoundingBox box;
 float CURRENT_TIME = 0.0f;
 float TIME_STEP = 0.0025f;
-float PARTICLE_RADIUS = 0.01f;
+float PARTICLE_RADIUS = 0.05f;
 float SMOOTHING_LENGTH = 0.1;
 glm::vec3 GRAVITY = glm::vec3(0.0f, -9.8f, 0.0f);
 vector<Particle> particles;
 int numParts = 100;
 GLint stacks = 10;
-float VELOCITY_THRESHOLD = 0.012;
-float VELOCITY_POSITION_THRESHOLD = 0.1;
+float VELOCITY_THRESHOLD = 0.005;
+float VELOCITY_POSITION_THRESHOLD = PARTICLE_RADIUS*1.05f;
 
 //****************************************************
 // Declare functions for later use
@@ -212,11 +212,9 @@ void updateParticlePositions() {
 
     static int pers = 0;
     glm::vec3 total_force = surface_tension + particle_pressure + viscosity;
-    glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP;
+    glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP+GRAVITY;
     
-    if (particles[i].position[2] < box.nll.y) {
-    	acceleration = acceleration + GRAVITY;
-    }
+
     
 
     bool slow = abs(particles[i].velocity.y) < VELOCITY_THRESHOLD;
@@ -233,8 +231,8 @@ void updateParticlePositions() {
     }
     
   }  
-      //cout<<"POS:"<<' '<<particles[1].position[0]<<' '<<particles[1].position[1]<<' '<<particles[1].position[2]<<'\n';
-      //cout<<"VEL:"<<' '<<particles[1].velocity[0]<<' '<<particles[1].velocity[1]<<' '<<particles[1].velocity[2]<<'\n';
+      cout<<"POS:"<<' '<<particles[1].position[0]<<' '<<particles[1].position[1]<<' '<<particles[1].position[2]<<'\n';
+      cout<<"VEL:"<<' '<<particles[1].velocity[0]<<' '<<particles[1].velocity[1]<<' '<<particles[1].velocity[2]<<'\n';
 }
 
 //****************************************************
@@ -620,6 +618,7 @@ int main(int argc, char *argv[]) {
     }
 	else if (strcmp(argv[i], "-rad") == 0){
 		PARTICLE_RADIUS = atof(argv[i+1]);
+		VELOCITY_POSITION_THRESHOLD = PARTICLE_RADIUS*1.05f;
 		i++;
 	}
   }
