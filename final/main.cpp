@@ -143,6 +143,8 @@ glm::vec3 GRAVITY = glm::vec3(0.0f, -9.8f, 0.0f);
 vector<Particle> particles;
 int numParts = 100;
 GLint stacks = 10;
+float VELOCITY_THRESHOLD = 0.012;
+float VELOCITY_POSITION_THRESHOLD = 0.1;
 
 //****************************************************
 // Declare functions for later use
@@ -208,16 +210,31 @@ void updateParticlePositions() {
     glm::vec3 particle_pressure = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
 
+    static int pers = 0;
     glm::vec3 total_force = surface_tension + particle_pressure + viscosity;
-    glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP + GRAVITY;
+    glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP;
+    
+    if (particles[i].position[2] < box.nll.y) {
+    	acceleration = acceleration + GRAVITY;
+    }
+    
+
+    bool slow = abs(particles[i].velocity.y) < VELOCITY_THRESHOLD;
     particles[i].velocity = particles[i].velocity + (acceleration * TIME_STEP);
+    bool should_stop = particles[i].velocity.y < VELOCITY_THRESHOLD;
+    bool close_to_bottom = particles[i].position.y - box.nll.y < VELOCITY_POSITION_THRESHOLD;
+    if (slow && should_stop && close_to_bottom) {
+    	particles[i].velocity.y = 0.0f;
+    }
     particles[i].position = particles[i].position + (particles[i].velocity * TIME_STEP);
 
-    if ((particles[i].position.y + PARTICLE_RADIUS) < box.nll.y + PARTICLE_RADIUS) {
+    if ((particles[i].position.y) < box.nll.y + PARTICLE_RADIUS) {
       particles[i].velocity *= -0.71f;
     }
     
-  }
+  }  
+      //cout<<"POS:"<<' '<<particles[1].position[0]<<' '<<particles[1].position[1]<<' '<<particles[1].position[2]<<'\n';
+      //cout<<"VEL:"<<' '<<particles[1].velocity[0]<<' '<<particles[1].velocity[1]<<' '<<particles[1].velocity[2]<<'\n';
 }
 
 //****************************************************
