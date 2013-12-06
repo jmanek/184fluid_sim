@@ -127,13 +127,6 @@ void myDisplay() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                // clear the color buffer (sets everything to black)
   glViewport(0, 0, viewport.w, viewport.h);
 
-  /*
-  float aspect_ratio = viewport.w / viewport.h;
-  float z_near = 1.0f;
-  float z_far = z_near + 20.0f * obj_diam; 
-  float fov = 90.0f;
-  */
-
   //Camera Setup:
   glColor3f(0.0, 1.0, 0);
   glMatrixMode(GL_PROJECTION);                  
@@ -242,11 +235,3 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-
-
-
-
-
-
-
-
