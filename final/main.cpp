@@ -267,10 +267,11 @@ void initScene(){
   GLfloat materialDiffuse[] = {0.2, 0.3, 0.9, 1.0};
   GLfloat materialSpecular[] = {1.0, 1.0, 1.0, 1.0};
   GLfloat materialShininess[] = {40, 0};
-  GLfloat material[] = {0.1, 0.3, 1, 1.0};
-  glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, material);
+  glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, materialAmbient);
+  glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, materialDiffuse);
   glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, materialSpecular);
   glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS, materialShininess);
+
   
   generateParticles(numParts);
 
@@ -320,12 +321,61 @@ void getSpecialKeys(int key, int x, int y) {
       }
   }
 }
-/****************************************************
-// function that does the actual drawing//
-/* Drawing functions
-* drawBoundingBox
-* drawParticles
-*/
+
+//****************************************************
+// Draw background / bounds
+//****************************************************
+
+void drawBackground() {
+  
+	GLfloat bgSpecular[] = {1.0, 1.0, 1.0, 1.0};
+	GLfloat bgShininess = 10;
+	glEnable(GL_COLOR_MATERIAL);
+	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+	glColor4f(0.9,0.9,0.9, 1.0);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, bgSpecular);
+	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, bgShininess);
+
+	glPushMatrix();
+	glBegin(GL_QUADS);
+    glVertex3f(box.fll.x, box.fll.y, box.fll.z);
+    glVertex3f(box.flr.x, box.flr.y, box.flr.z);
+    glVertex3f(box.ftr.x, box.ftr.y, box.ftr.z);
+    glVertex3f(box.ftl.x, box.ftl.y, box.ftl.z);
+    
+    
+    glVertex3f(box.fll.x, box.fll.y, box.fll.z);
+    glVertex3f(box.flr.x, box.flr.y, box.flr.z);
+    glVertex3f(box.nlr.x, box.nlr.y, box.nlr.z);
+    glVertex3f(box.nll.x, box.nll.y, box.nll.z);
+    
+    
+    glVertex3f(box.nll.x, box.nll.y, box.nll.z);
+    glVertex3f(box.fll.x, box.fll.y, box.fll.z);
+    glVertex3f(box.ftl.x, box.ftl.y, box.ftl.z);
+    glVertex3f(box.ntl.x, box.ntl.y, box.ntl.z);
+
+    
+    glVertex3f(box.nlr.x, box.nlr.y, box.nlr.z);
+    glVertex3f(box.flr.x, box.flr.y, box.flr.z);
+    glVertex3f(box.ftr.x, box.ftr.y, box.ftr.z);
+    glVertex3f(box.ntr.x, box.ntr.y, box.ntr.z);
+    
+    glEnd();
+    glDisable(GL_COLOR_MATERIAL);
+    glPopMatrix();
+    
+    glDisable(GL_COLOR_MATERIAL);
+}
+
+
+
+
+
+
+//****************************************************
+// Draw bounding box  
+//****************************************************
 
 void drawBoundingBox() {
   glPushMatrix();
@@ -386,13 +436,13 @@ void drawBoundingBox() {
 //****************************************************
 void generateParticles(int number) {
 	GLdouble distance = 3*PARTICLE_RADIUS;
+	number--;
 	float xMult = 0;
 	float yMult = 0;
 	float zMult = 0;
 	float x = box.ntl.x + PARTICLE_RADIUS;
 	float y = box.ntl.y + PARTICLE_RADIUS;
 	float z = box.ntl.z - PARTICLE_RADIUS;
-
 	while (number > 0) {
 		Particle particle;
 		particle.position = glm::vec3(x+xMult*distance, y+yMult*distance, z+zMult*distance);
@@ -418,11 +468,22 @@ void generateParticles(int number) {
 void drawParticles() {
   for (int i = 0; i < particles.size(); i++) {
     glm::vec3 position = particles[i].position;
-    glPopMatrix();
+  
+	GLfloat bgSpecular[] = {1.0, 1.0, 1.0, 1.0};
+	GLfloat bgShininess = 40;
+	glEnable(GL_COLOR_MATERIAL);
+	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT);
+	glColor4f(0.3, 0.4, 0.9, 1.0);
+	glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
+	glColor4f(0.2, 0.3, 0.9, 1.0);
+	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, bgSpecular);
+	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, bgShininess);
+	
     glPushMatrix();
     glTranslatef(position.x, position.y, position.z);
     particles[i].draw();
     glPopMatrix();
+    glDisable(GL_COLOR_MATERIAL);
   }
 }
 
@@ -452,6 +513,7 @@ void myDisplay() {
   updateParticlePositions();
   /* Drawing sphere loop */
   drawBoundingBox();
+  drawBackground();
   drawParticles();
   //Scene cleanup
   glFlush();
