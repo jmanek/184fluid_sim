@@ -55,6 +55,11 @@ class BoundingBox {
     glm::vec3 ftl;
     glm::vec3 flr;
     glm::vec3 ftr;
+    float left_wall;
+    float right_wall;
+    float rear_wall;
+    float front_wall;
+    float bottom_wall;
     float sideLength;
     BoundingBox(){};
     BoundingBox(glm::vec3 start, float length);
@@ -71,35 +76,30 @@ class BoundingBox {
 BoundingBox::BoundingBox(glm::vec3 start, float length) {
     sideLength = length;
     nll = start;
-    
     ntl = start;
-    //ntl.y += length + length/4;
-    ntl.y += length;
-    
     nlr = start;
-    nlr.x += length;
-    
     ntr = start;
-    ntr.x += length;
-    //ntr.y += length + length/4;
-    ntr.y += length;
-    
     fll = start;
-    fll.z -= length;
     ftl = start;
-    ftl.z -= length;
-    //ftl.y += length + length/4;
-    ftl.y += length;
-    
     flr = start;
+    ftr = start;
+    ntl.y += length;
+    nlr.x += length;
+    ntr.x += length;
+    ntr.y += length;
+    fll.z -= length;
+    ftl.z -= length;
+    ftl.y += length;
     flr.x += length;
     flr.z -= length;
-    
-    ftr = start;
     ftr.x += length;
-    //ftr.y += length + length/4;
     ftr.y += length;
     ftr.z -= length;
+    left_wall = nll.x;
+    right_wall = nlr.x;
+    rear_wall = fll.z;
+    front_wall = nll.z;
+    bottom_wall = nll.y;
 }
 
 class Particle {
@@ -112,14 +112,117 @@ class Particle {
     ~Particle(){};
     void draw();
     Particle(glm::vec3 pos, glm::vec3 vel);
+    bool willHitBoundingBox(float t);
 };
 
 bool BoundingBox::hitsBoundary(glm::vec3 position, glm::vec3 radius) {
   return false;
 }
 
+
+//****************************************************
+// Bounding Box collision global variables
+//****************************************************
+float DAMP = -0.9f;
+static glm::vec3 dampVec;
+float PARTICLE_RADIUS = 0.05f;
+BoundingBox box;
+static float timeToHit = 0.0f;
+static float timeRemainder = 0.0f;
+float TIME_STEP = 0.0025f;
+
+//****************************************************
+// Checks bounding box collision. Return bool and sets damping vector appropriately.
+// Should probably use willHitBoundingBox instead for better particle deflection
+//****************************************************
 bool Particle::hitsBoundingBox() {
-  return false;
+	if (position[0] + PARTICLE_RADIUS > box.right_wall || position[0] - PARTICLE_RADIUS < box.left_wall) {
+		dampVec[0] = DAMP;
+		dampVec[1] = 1.0f;
+		dampVec[2] = 1.0f;
+		return true;
+	}
+	else if (position[2] + PARTICLE_RADIUS > box.front_wall ||	position[2] - PARTICLE_RADIUS < box.rear_wall) {
+		dampVec[0] = 1.0f;
+		dampVec[1] = 1.0f;
+		dampVec[2] = DAMP;
+		return true;	
+	}
+	else if(position[1] - PARTICLE_RADIUS < box.bottom_wall) {
+		dampVec[0] = 1.0f;
+		dampVec[1] = DAMP;
+		dampVec[2] = 1.0f;
+		return true;
+	}
+	return false;
+}
+
+//****************************************************
+// Checks if a particle WILL hit the bounding box, and set the time it will take to hit.
+// Sets time to the minimum for the first wall to be hit
+// Also sets the remaining time to calculate position after deflection
+//****************************************************
+bool Particle::willHitBoundingBox(float time) {
+	bool hit = false;
+	timeToHit = time;
+	timeRemainder = time;
+	if (position[0] + (velocity[0] * TIME_STEP) + PARTICLE_RADIUS >= box.right_wall && velocity[0] != 0.0f) {
+		float t = (box.right_wall - position[0] - PARTICLE_RADIUS) / velocity[0];
+		hit = true;
+		if (t < timeToHit) { //cout<<"damp set\n";
+			dampVec[0] = DAMP;
+			dampVec[1] = 1.0f;
+			dampVec[2] = 1.0f;
+			timeToHit = t;
+			timeRemainder = time - t;
+		} //cout<<"Time to hit right wall: "<<t<<"\n";
+	}
+	if (position[0] + (velocity[0] * TIME_STEP) - PARTICLE_RADIUS <= box.left_wall && velocity[0] != 0.0f) {
+		float t = (box.left_wall - position[0] + PARTICLE_RADIUS) / velocity[0];
+		hit = true;
+		if (t < timeToHit) {	//		cout<<"damp set\n";
+			dampVec[0] = DAMP;
+			dampVec[1] = 1.0f;
+			dampVec[2] = 1.0f;
+			timeToHit = t;
+			timeRemainder = time- t;
+		} //cout<<"Time to hit left wall: "<<t<<"\n";
+	} 
+	
+	if (position[2] + (velocity[2] * TIME_STEP) + PARTICLE_RADIUS >= box.front_wall && velocity[2] != 0.0f) {
+		float t = (box.front_wall - position[2] - PARTICLE_RADIUS) / velocity[2];
+		hit = true;
+		if (t < timeToHit) {	//		cout<<"damp set\n";
+			dampVec[0] = 1.0f;
+			dampVec[1] = 1.0f;
+			dampVec[2] = DAMP;
+			timeToHit = t;
+			timeRemainder = time - t;
+		} //cout<<"Time to hit front wall: "<<t<<"\n";
+	}
+	if (position[2] + (velocity[2] * TIME_STEP) - PARTICLE_RADIUS <= box.rear_wall && velocity[2] != 0.0f) {
+		float t = (box.rear_wall - position[2] + PARTICLE_RADIUS) / velocity[2];
+		hit = true;
+		if (t < timeToHit) {	//		cout<<"damp set\n";
+			dampVec[0] = 1.0f;
+			dampVec[1] = 1.0f;
+			dampVec[2] = DAMP;
+			timeToHit = t;
+			timeRemainder = time - t;
+		} //cout<<"Time to hit rear wall: "<<t<<"\n";
+	} 
+	if (position[1] + (velocity[1] * TIME_STEP) - PARTICLE_RADIUS <= box.bottom_wall && velocity[1] != 0.0f) {
+		float t = abs(box.bottom_wall - position[1] + PARTICLE_RADIUS) / velocity[1];
+		hit = true;
+		if (t < timeToHit) {	//		cout<<"damp set\n";
+			dampVec[0] = 1.0f;
+			dampVec[1] = DAMP;
+			dampVec[2] = 1.0f;
+			timeToHit = t;
+			timeRemainder = time - t;
+		} //cout<<"Time to hit bottom: "<<t<<"\n";
+	} 
+	return hit;
 }
 
 Particle::Particle(glm::vec3 pos, glm::vec3 vel) {
@@ -128,16 +231,13 @@ Particle::Particle(glm::vec3 pos, glm::vec3 vel) {
 }
 
 //****************************************************
-// Global Variables
+// More Global Variables
 //****************************************************
 
 #define VIEWPORT_HEIGHT 1200;
 #define VIEWPORT_WIDTH  1200;
 Viewport    viewport;
-BoundingBox box;
 float CURRENT_TIME = 0.0f;
-float TIME_STEP = 0.0025f;
-float PARTICLE_RADIUS = 0.05f;
 float SMOOTHING_LENGTH = 0.1;
 glm::vec3 GRAVITY = glm::vec3(0.0f, -9.8f, 0.0f);
 vector<Particle> particles;
@@ -151,8 +251,6 @@ float VELOCITY_POSITION_THRESHOLD = PARTICLE_RADIUS*1.05f;
 //****************************************************
 
 void generateParticles(int);
-
-
 
 
 //****************************************************
@@ -200,6 +298,11 @@ void calculateParticleForces() {
 
 }
 
+
+//****************************************************
+// Loops through particles and updates their positions
+//****************************************************
+
 void updateParticlePositions() {
   for (int i = 0; i < (signed)particles.size(); i++) {
     /* Gradient/color field calculations go here
@@ -212,28 +315,39 @@ void updateParticlePositions() {
 
     static int pers = 0;
     glm::vec3 total_force = surface_tension + particle_pressure + viscosity;
-    glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP+GRAVITY;
+    glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP + GRAVITY;
     
 
     
-
-    bool slow = abs(particles[i].velocity.y) < VELOCITY_THRESHOLD;
-    particles[i].velocity = particles[i].velocity + (acceleration * TIME_STEP);
-    bool should_stop = particles[i].velocity.y < VELOCITY_THRESHOLD;
-    bool close_to_bottom = particles[i].position.y - box.nll.y < VELOCITY_POSITION_THRESHOLD;
-    if (slow && should_stop && close_to_bottom) {
-    	particles[i].velocity.y = 0.0f;
+    //calculate new velocity
+    particles[i].velocity = particles[i].velocity + acceleration * TIME_STEP;
+    
+    // if collision imminent, update position until it hits wall, then reverse proper 
+    // velocity component with damping and update position with remaining time
+    if(particles[i].willHitBoundingBox(TIME_STEP)){
+		float t = TIME_STEP;
+		while (particles[i].willHitBoundingBox(t)) {
+			//cout<<"DAMP: "<<dampVec[0]<<" "<<dampVec[1]<<" "<<dampVec[2]<<"\n";
+			particles[i].position = particles[i].position + (particles[i].velocity * timeToHit);
+			particles[i].velocity = particles[i].velocity * dampVec;
+			t = timeRemainder;
+			//cout<<"Updating position. Will Hit\n";
+		}
+		particles[i].position = particles[i].position + (particles[i].velocity * timeRemainder);
     }
+    //otherwise, just update position
+    else{
+    
     particles[i].position = particles[i].position + (particles[i].velocity * TIME_STEP);
-
-    if ((particles[i].position.y) < box.nll.y + PARTICLE_RADIUS) {
-      particles[i].velocity *= -0.71f;
-    }
+    	//cout<<"Updating position\n";
     
-  }  
-      cout<<"POS:"<<' '<<particles[1].position[0]<<' '<<particles[1].position[1]<<' '<<particles[1].position[2]<<'\n';
-      cout<<"VEL:"<<' '<<particles[1].velocity[0]<<' '<<particles[1].velocity[1]<<' '<<particles[1].velocity[2]<<'\n';
+    }
+  } 
+	//cout<<"TIME: " << CURRENT_TIME<<"\n:;
+	//cout<<"POS:"<<' '<<particles[1].position[0]<<' '<<particles[1].position[1]<<' '<<particles[1].position[2]<<'\n';
+	//cout<<"VEL:"<<' '<<particles[1].velocity[0]<<' '<<particles[1].velocity[1]<<' '<<particles[1].velocity[2]<<'\n';
 }
+
 
 //****************************************************
 // reshape viewport if the window is resized
@@ -292,29 +406,47 @@ void initScene(){
 
 }
 
+
+//****************************************************
+// function for handling keypresses
+//****************************************************
 void getKeys(unsigned char key, int x, int y) {
     switch(key) {
+      /*
       case ' ': {
-        exit(0);
-      }
-        break;
+			exit(0);
+			break;
+		  }
       case 'n': {
-        Particle particle;
-        particle.position = glm::vec3(0.0f, 1.0f, -3.5f);
-        particle.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        particles.push_back(particle);
-        cout << "Particle added! Total particles: " << particles.size() << endl;
-      }
-        break;
-      case 'h':
-        break;
-      case '+': 
-        break;
-      default:
-        break;
+			Particle particle;
+			particle.position = glm::vec3(-0.70f, 0.5f, -3.5f);
+			particle.velocity = glm::vec3(10, 0, 1);
+			particles.push_back(particle);
+			cout << "Particle added! Total particles: " << particles.size() << endl;
+			break;
+		  }
+      case 'm': {
+			Particle particle;
+			particle.position = glm::vec3(0.0f, 1.0f, -3.5f);
+			particle.velocity = glm::vec3(3, 0, 2);
+			particles.push_back(particle);
+			cout << "Particle added! Total particles: " << particles.size() << endl;
+			break;
+		  }*/
+      default:{
+      		Particle particle;
+			particle.position = glm::vec3(-0.70f, 0.5f, -3.5f);
+			particle.velocity = glm::vec3((key-96), 0, (int)(key-96)/4);
+			particles.push_back(particle);
+			cout << "Particle added! Total particles: " << particles.size() << endl;
+			break;
+		}
       }
   }
 
+//****************************************************
+// function for handling special keypresses (SHIFT and ARROWS)
+//****************************************************
 
 void getSpecialKeys(int key, int x, int y) {
   int modifier = glutGetModifiers();
@@ -456,7 +588,7 @@ void generateParticles(int number) {
 	float yMult = 0;
 	float zMult = 0;
 	float x = box.ntl.x + PARTICLE_RADIUS;
-	float y = box.ntl.y + PARTICLE_RADIUS;
+	float y = box.ntl.y - PARTICLE_RADIUS;
 	float z = box.ntl.z - PARTICLE_RADIUS;
 	while (number > 0) {
 		Particle particle;
@@ -602,7 +734,7 @@ int main(int argc, char *argv[]) {
   //This tells glut to use a double-bufferd window with red, green, and blue channels 
   glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
   // Initalize theviewport size
-  box = BoundingBox(glm::vec3(-.70,-.75,-3), 1.5);
+  box = BoundingBox(glm::vec3(-.75,-.75,-3), 1.5);
   viewport.w = VIEWPORT_WIDTH;
   viewport.h = VIEWPORT_HEIGHT;
   //Parse input file: where OBJ files are parsed
@@ -619,6 +751,10 @@ int main(int argc, char *argv[]) {
 	else if (strcmp(argv[i], "-rad") == 0){
 		PARTICLE_RADIUS = atof(argv[i+1]);
 		VELOCITY_POSITION_THRESHOLD = PARTICLE_RADIUS*1.05f;
+		i++;
+	}
+	else if (strcmp(argv[i], "-damp") == 0){
+		DAMP = -1*atof(argv[i+1]);
 		i++;
 	}
   }
