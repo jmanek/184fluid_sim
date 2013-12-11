@@ -46,6 +46,7 @@ class Particle {
     bool hitsBoundingBox();
     ~Particle(){};
     void draw();
+    vector<Particle > neighbors;
     Particle(glm::vec3 pos, glm::vec3 vel);
 };
 class Viewport {
@@ -85,8 +86,11 @@ class Grid {
     Grid(){};
     Grid(float min_val, float max_val, float cube_length);
     void clearGrid();
+
     int insertCube(int particle_index, glm::vec3 position, float cube_length);
     void updateGrid(vector<Particle> particles);
+    void validateCubeIndex(int k);
+    vector<int > generateNeighbors(int box_index, int cube_length);
 };
 
 
@@ -148,6 +152,68 @@ void Grid::updateGrid(vector<Particle> particles){
       break;
     }
   }
+}
+
+void Grid::validateCubeIndex(int k) {
+  if (k < 0 || k > total_cubes) {
+    cout << "Invalid index at " << k << endl;
+  }
+}
+vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
+  vector<int > neighborCubes;
+  int cube_length_squared = cube_length * cube_length;
+
+  // Front face of entire cube
+  if (box_index < cube_length_squared) {
+    //Front face - left column
+    if (box_index % cube_length == 0) {
+      //Front face - left column - upper left corner
+      if (box_index == 0) {
+
+      }
+      //Front face - left column - lower left corner
+      if (box_index == (cube_length_squared - cube_length)) {
+
+      }
+      // Front face - left column - not a corner
+      else {
+
+      }
+    }
+    // Front face - right column
+    else if (box_index % cube_length == (cube_length - 1)) {
+      //Front face - right column - upper right corner
+      if (box_index == (cube_length - 1)) {
+
+      }
+      //Front face - right column - lower right corner
+      else if (box_index == (cube_length_squared - 1)) {
+
+      }
+      //Front face - right column - not a corner
+      else {
+
+      }
+
+    }
+    else {
+      //Front face - top row - not corner
+      if (box_index % cube_length_squared < cube_length) {
+
+      }
+      //Front face - bottom row - not corner
+      else if (box_index % cube_length_squared > (cube_length_squared - cube_length)) {
+
+      }
+      //Front face - not row/column cubes
+      else {
+
+      }
+    }
+  }
+  vector<int > return_vector;
+  return return_vector;
+
 }
 
 
