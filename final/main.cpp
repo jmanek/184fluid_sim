@@ -123,7 +123,7 @@ bool BoundingBox::hitsBoundary(glm::vec3 position, glm::vec3 radius) {
 //****************************************************
 // Bounding Box collision global variables
 //****************************************************
-float DAMP = -0.5f;
+float DAMP = -0.2f;
 static glm::vec3 dampVec;
 float PARTICLE_RADIUS = 0.05f;
 BoundingBox box;
@@ -243,8 +243,6 @@ glm::vec3 GRAVITY = glm::vec3(0.0f, -9.8f, 0.0f);
 vector<Particle> particles;
 int numParts = 100;
 GLint stacks = 10;
-float VELOCITY_THRESHOLD = 0.005;
-float VELOCITY_POSITION_THRESHOLD = PARTICLE_RADIUS*1.05f;
 
 //****************************************************
 // Declare functions for later use
@@ -436,7 +434,11 @@ void getKeys(unsigned char key, int x, int y) {
       default:{
       		Particle particle;
 			particle.position = glm::vec3(-0.70f, 0.5f, -3.5f);
-			particle.velocity = glm::vec3((key-96), 0, (int)(key-96)/4);
+			int k = 4;
+			if (key %2 == 0) {
+				k = -4;
+			}
+			particle.velocity = glm::vec3((key-96), 0, (int)(key-96)/k);
 			particles.push_back(particle);
 			cout << "Particle added! Total particles: " << particles.size() << endl;
 			break;
@@ -750,7 +752,6 @@ int main(int argc, char *argv[]) {
     }
 	else if (strcmp(argv[i], "-rad") == 0){
 		PARTICLE_RADIUS = atof(argv[i+1]);
-		VELOCITY_POSITION_THRESHOLD = PARTICLE_RADIUS*1.05f;
 		i++;
 	}
 	else if (strcmp(argv[i], "-damp") == 0){
