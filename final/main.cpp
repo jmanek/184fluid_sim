@@ -36,6 +36,18 @@ using namespace std;
 // Some Classes
 //****************************************************
 
+class Particle {
+  public:
+    Particle(){};
+    glm::vec3 position; 
+    float pressure;
+    glm::vec3 velocity;
+    float density;
+    bool hitsBoundingBox();
+    ~Particle(){};
+    void draw();
+    Particle(glm::vec3 pos, glm::vec3 vel);
+};
 class Viewport {
   public:
     int w, h; // width and height
@@ -72,8 +84,9 @@ class Grid {
   public: 
     Grid(){};
     Grid(float min_val, float max_val, float cube_length);
-    void generateInitialGrid();
-    int insertCube(glm::vec3 position, float cube_length);
+    void clearGrid();
+    int insertCube(int particle_index, glm::vec3 position, float cube_length);
+    void updateGrid(vector<Particle> particles);
 };
 
 
@@ -84,24 +97,22 @@ Grid::Grid(float minx, float maxx, float side_length) {
   total_cubes = int (max_val - min_val) / cube_length;
 }
 
-void Grid::generateInitialGrid() {
+void Grid::clearGrid() {
   int max_cube_index = total_cubes * total_cubes * total_cubes; 
   cout << "Total cubes: " << total_cubes << endl;
   cout << "Max number of cubes = " << max_cube_index << endl;
   for (int i = 0; i < max_cube_index; i++) {
     vector<int> neighbor_indices;
-    neighbor_indices.push_back(-1);
-    neighbor_indices.push_back(-2);
     grid_locs.push_back(neighbor_indices);
   }
   for (int j = 0; j < max_cube_index; j++) {
-    if (grid_locs[j].size() == 2) {
-      cout << "Success at index: " << j << endl;
+    if (grid_locs[j].size() == 0) {
     }
   }
 }
 
-int Grid::insertCube(glm::vec3 position, float cube_length) {
+int Grid::insertCube(int particle_index, glm::vec3 position, float cube_length) {
+  cout << "hits in insertCube at " << particle_index << endl;
   int column_offset = floor(position.x / cube_length);
   int row_offset = floor(position.y / cube_length);
   int depth_offset = floor(position.z / cube_length);
@@ -111,10 +122,32 @@ int Grid::insertCube(glm::vec3 position, float cube_length) {
 
   int grid_locs_index = column_offset + row_offset * (total_cubes)  + depth_offset * (total_cubes_squared);
   if (grid_locs_index > (total_cubes_cubed) - 1) {
-    cout << "Index at " << grid_locs_index << " exceeded max index of " << (total_cubes_cubed - 1) << endl;
-    return -1000;
+      cout << "Broken index at:  " << grid_locs_index << endl;
+      return -1000;
+  }
+  else {
+    //cout << "hits here " << endl;
+    //Temporary Hack: set any negative value to the 0th box to avoid seg faults: fix w/ bounding box
+    if (grid_locs_index < 0) {
+      grid_locs[0].push_back(particle_index);
+    }
+    else {
+      grid_locs[grid_locs_index].push_back(particle_index);
+    }
   }
   return grid_locs_index;
+}
+void Grid::updateGrid(vector<Particle> particles){
+  clearGrid();
+  for (int i = 0; i < particles.size(); i++) {
+    glm::vec3 particle_position = particles[i].position;
+    int grid_index = insertCube(i, particle_position, cube_length);
+    cout << "Inserted at grid number: " << grid_index << endl;
+    if (grid_index == -1000) {
+      cout << "Broke at particle position : " << particle_position.x << ", " << particle_position.y << ", " << particle_position.z << endl;
+      break;
+    }
+  }
 }
 
 
@@ -160,18 +193,6 @@ BoundingBox::BoundingBox(glm::vec3 start, float length) {
     ftr.z -= length;
 }
 
-class Particle {
-  public:
-    Particle(){};
-    glm::vec3 position; 
-    float pressure;
-    glm::vec3 velocity;
-    float density;
-    bool hitsBoundingBox();
-    ~Particle(){};
-    void draw();
-    Particle(glm::vec3 pos, glm::vec3 vel);
-};
 
 bool BoundingBox::hitsBoundary(glm::vec3 position, glm::vec3 radius) {
   return false;
@@ -334,6 +355,24 @@ void updateParticlePositions() {
   }  
       // cout<<"POS:"<<' '<<particles[1].position[0]<<' '<<particles[1].position[1]<<' '<<particles[1].position[2]<<'\n';
       // cout<<"VEL:"<<' '<<particles[1].velocity[0]<<' '<<particles[1].velocity[1]<<' '<<particles[1].velocity[2]<<'\n';
+}
+
+void findMinParticlePositions() {
+  float minx = 0.0f;
+  float miny = 0.0f;
+  float minz = 0.0f;
+
+  for (int i = 0; i < particles.size(); i++) {
+    glm::vec3 position = particles[i].position;
+    minx = min(minx, position.x);
+    miny = min(miny, position.y);
+    minz = min(minz, position.z);
+  }
+  cout << "Min Values: " << endl;
+  cout << "Minx: " << minx << endl;
+  cout << "Miny: " << miny << endl;
+  cout << "Minz: " << minz << endl;
+
 }
 
 
@@ -669,9 +708,11 @@ void myDisplay() {
   drawParticles();
   //Scene cleanup
 
+  findMinParticlePositions();
 
   //Testing Neighbors algorithm
-  grid.generateInitialGrid();
+  grid.clearGrid();
+  grid.updateGrid(particles);
 
   glFlush();
   glutSwapBuffers();// swap buffers (we earlier set double buffer)
