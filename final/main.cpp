@@ -123,7 +123,7 @@ bool BoundingBox::hitsBoundary(glm::vec3 position, glm::vec3 radius) {
 //****************************************************
 // Bounding Box collision global variables
 //****************************************************
-float DAMP = -0.9f;
+float DAMP = -0.5f;
 static glm::vec3 dampVec;
 float PARTICLE_RADIUS = 0.05f;
 BoundingBox box;
