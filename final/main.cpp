@@ -161,9 +161,17 @@ void Grid::validateCubeIndex(int k) {
 }
 vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
   vector<int > neighborCubes;
+
+
+  /* The following variables are defined to calculate the edge cases for the cube grid
+  *  box_index: index from 0 to total_cubes to identify which box it is
+  *  cube_length: the width of a face of the bounding cube
+  *  cube_length_squared: the number of cubes in one face of the bounding cube
+  *  total_cube_size: the total number of cubes in the bounding cube ( == cube_length ^ 3)
+  */
+
   int cube_length_squared = cube_length * cube_length;
   int total_cube_size = cube_length_squared * cube_length;
-
 
   // Back Face 
   if (box_index < cube_length_squared) {
@@ -218,54 +226,105 @@ vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
   else if (box_index >= (total_cubes - cube_length_squared)) {
     //Front face - left column
     if (box_index % cube_length == 0) {
-      //Back face - left column - lower left corner
+      //Front face - left column - lower left corner
       if (box_index == (total_cubes - cube_length_squared)) {
 
       }
-      //Back face - left column - upper left corner 
+      //Front face - left column - upper left corner 
       else if (box_index == (total_cubes - cube_length)) {
 
       }
-      //Back face - left column - not a corner
+      //Front face - left column - not a corner
       else {
 
       }
     }
-    //Back face - right column
+    //Front face - right column
 
     else if (box_index % cube_length == (cube_length - 1)) {
 
-      //Back face - right column - lower right corner
+      //Front face - right column - lower right corner
       if (box_index == (total_cubes - cube_length_squared + (cube_length - 1))) {
 
       }
-      //Back face - right column - upper right corner
+      //Front face - right column - upper right corner
       else if (box_index == total_cubes - 1 ) {
 
       }
 
-      //Back face - right column - not a corner
+      //Front face - right column - not a corner
       else {
 
       }
     }
-    //Back face - not a column 
+    //Front face - not a column 
     else {
-      //Back face - bottom row - not corner
+      //Front face - bottom row - not corner
       if (box_index % cube_length_squared < (total_cubes - cube_length_squared + cube_length)) {
 
       }
-      //Back face - top row - not corner
+      //Front face - top row - not corner
       else if (box_index % cube_length_squared > (total_cubes - cube_length)) {
 
       }
-      //Back face - not row/column cubes
+      //Front face - not row/column cubes
       else {
 
       }
     }
   }
+  
 
+  // Left face
+  else if (box_index % cube_length == 0) {
+    //Left face, back column
+    if (box_index < cube_length_squared)  {
+
+    }
+    //Left face, near column
+    else if (box_index >= (total_cubes - cube_length_squared)) {
+
+    }
+    //Left face, top row
+    else if (box_index % cube_length_squared == (cube_length_squared - cube_length)) {
+
+    }
+    //Left face, bottom row
+    else if (box_index % cube_length_squared < cube_length) {
+
+    }
+    //Left face, every other value
+    else {
+
+    }
+  }
+
+  //Right face
+  else if (box_index % cube_length == (cube_length - 1)) {
+    //Right face, back column
+    if (box_index < cube_length_squared)  {
+
+    }
+
+    //Right face, front column
+    else if (box_index >= (total_cubes - cube_length_squared)) {
+
+    }
+    //Right face, top row
+    else if (box_index % cube_length_squared == (cube_length_squared - 1)) {
+    }
+    //Right face, bottom row
+    else if (box_index % cube_length_squared < cube_length) {
+
+    }
+    //Right face, any other value
+    else {
+
+    }
+  }
+  else {
+
+  }
   vector<int > return_vector;
   return return_vector;
 
