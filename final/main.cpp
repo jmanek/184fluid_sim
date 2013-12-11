@@ -75,8 +75,8 @@ class BoundingBox {
 };
 
 class Grid {
-  //vector < vector < vector < int > > >  grid_locs;
   vector < vector <int > > grid_locs;
+  vector < vector <int > > grid_neighbors;
   float min_val;
   float max_val;
   float cube_length;
@@ -86,11 +86,13 @@ class Grid {
     Grid(){};
     Grid(float min_val, float max_val, float cube_length);
     void clearGrid();
+    void initializeNeighbors();
 
     int insertCube(int particle_index, glm::vec3 position, float cube_length);
     void updateGrid(vector<Particle> particles);
     void validateCubeIndex(int k);
-    vector<int > generateNeighbors(int box_index, int cube_length);
+    //vector<int > generateNeighbors(int box_index, int cube_length);
+    void generateNeighbors(int box_index, int cube_length);
 };
 
 
@@ -101,22 +103,30 @@ Grid::Grid(float minx, float maxx, float side_length) {
   total_cubes = int (max_val - min_val) / cube_length;
 }
 
+void Grid::initializeNeighbors() {
+  int max_cube_index = total_cubes * total_cubes * total_cubes; 
+  grid_neighbors.clear(); 
+  for (int i = 0; i < max_cube_index; i++) {
+    vector<int> neighbor_cell_indices;
+    grid_neighbors.push_back(neighbor_cell_indices);
+  }
+}
+
 void Grid::clearGrid() {
   int max_cube_index = total_cubes * total_cubes * total_cubes; 
+  /*
   cout << "Total cubes: " << total_cubes << endl;
   cout << "Max number of cubes = " << max_cube_index << endl;
+  */
+
+  grid_locs.clear();
   for (int i = 0; i < max_cube_index; i++) {
     vector<int> neighbor_indices;
     grid_locs.push_back(neighbor_indices);
   }
-  for (int j = 0; j < max_cube_index; j++) {
-    if (grid_locs[j].size() == 0) {
-    }
-  }
 }
 
 int Grid::insertCube(int particle_index, glm::vec3 position, float cube_length) {
-  cout << "hits in insertCube at " << particle_index << endl;
   int column_offset = floor(position.x / cube_length);
   int row_offset = floor(position.y / cube_length);
   int depth_offset = floor(position.z / cube_length);
@@ -146,10 +156,16 @@ void Grid::updateGrid(vector<Particle> particles){
   for (int i = 0; i < particles.size(); i++) {
     glm::vec3 particle_position = particles[i].position;
     int grid_index = insertCube(i, particle_position, cube_length);
-    cout << "Inserted at grid number: " << grid_index << endl;
+    //cout << "Inserted at grid number: " << grid_index << endl;
     if (grid_index == -1000) {
       cout << "Broke at particle position : " << particle_position.x << ", " << particle_position.y << ", " << particle_position.z << endl;
       break;
+    }
+  }
+  for (int i = 0; i < grid_locs.size(); i++) {
+    if (grid_locs[i].size() != 0) {
+      cout << "Size of grid_locs[" << i << "]: " << grid_locs[i].size();
+      cout << endl;
     }
   }
 }
@@ -159,7 +175,7 @@ void Grid::validateCubeIndex(int k) {
     cout << "Invalid index at " << k << endl;
   }
 }
-vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
+void Grid::generateNeighbors(int box_index, int cube_length) {
   vector<int > neighborCubes;
 
 
@@ -172,6 +188,10 @@ vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
 
   int cube_length_squared = cube_length * cube_length;
   int total_cube_size = cube_length_squared * cube_length;
+  if (box_index > grid_neighbors.size()) {
+    cout << "SOMETHING WENT WRONG IN generateNeighbors!!" << endl;
+    cout << "boxIndex > grid_neighbors.size()" << endl;
+  }
 
   // Back Face 
   if (box_index < cube_length_squared) {
@@ -305,7 +325,6 @@ vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
     if (box_index < cube_length_squared)  {
 
     }
-
     //Right face, front column
     else if (box_index >= (total_cubes - cube_length_squared)) {
 
@@ -315,18 +334,23 @@ vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
     }
     //Right face, bottom row
     else if (box_index % cube_length_squared < cube_length) {
-
     }
     //Right face, any other value
     else {
-
     }
   }
-  else {
 
+  //Top face 
+  else if (box_index % cube_length_squared >= (cube_length_squared - cube_length)){
+    //Should just be one case: remaining squares inside
   }
-  vector<int > return_vector;
-  return return_vector;
+  //Bottom face
+  else if (box_index % cube_length_squared < cube_length) {
+    //Should just be one case: remaining squares inside
+  }
+  //The rest of the cubes: everything inside of the cube
+  else {
+  }
 
 }
 
@@ -344,7 +368,6 @@ BoundingBox::BoundingBox(glm::vec3 start, float length) {
     nll = start;
     
     ntl = start;
-    //ntl.y += length + length/4;
     ntl.y += length;
     
     nlr = start;
@@ -352,14 +375,12 @@ BoundingBox::BoundingBox(glm::vec3 start, float length) {
     
     ntr = start;
     ntr.x += length;
-    //ntr.y += length + length/4;
     ntr.y += length;
     
     fll = start;
     fll.z -= length;
     ftl = start;
     ftl.z -= length;
-    //ftl.y += length + length/4;
     ftl.y += length;
     
     flr = start;
@@ -368,7 +389,6 @@ BoundingBox::BoundingBox(glm::vec3 start, float length) {
     
     ftr = start;
     ftr.x += length;
-    //ftr.y += length + length/4;
     ftr.y += length;
     ftr.z -= length;
 }
@@ -423,9 +443,6 @@ float VELOCITY_POSITION_THRESHOLD = PARTICLE_RADIUS*1.05f;
 void generateParticles(int);
 float w_poly6(float, float);
 float w_pressure_gradient(float, float);
-
-
-
 
 //****************************************************
 // Other functions
@@ -548,11 +565,12 @@ void findMinParticlePositions() {
     miny = min(miny, position.y);
     minz = min(minz, position.z);
   }
+  /*
   cout << "Min Values: " << endl;
   cout << "Minx: " << minx << endl;
   cout << "Miny: " << miny << endl;
   cout << "Minz: " << minz << endl;
-
+  */
 }
 
 
@@ -966,7 +984,10 @@ int main(int argc, char *argv[]) {
   glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
   // Initalize theviewport size
   box = BoundingBox(glm::vec3(-.70,-.75,-3), 1.5);
+  //box = BoundingBox(glm::vec3(0, 0, 0), 1.5);
+
   grid = Grid(-0.70, 1.5, SMOOTHING_LENGTH);
+  grid.initializeNeighbors();
   viewport.w = VIEWPORT_WIDTH;
   viewport.h = VIEWPORT_HEIGHT;
   //Parse input file: where OBJ files are parsed
