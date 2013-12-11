@@ -165,63 +165,64 @@ vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
   int total_cube_size = cube_length_squared * cube_length;
 
 
-  // Front face of entire cube
+  // Back Face 
   if (box_index < cube_length_squared) {
-    //Front face - left column
+    //Back face left column
     if (box_index % cube_length == 0) {
-      //Front face - left column - upper left corner
+      //Back face - left column - lower left corner
       if (box_index == 0) {
 
       }
-      //Front face - left column - lower left corner
+      //Back face - left column - upper left corner
       if (box_index == (cube_length_squared - cube_length)) {
 
       }
-      // Front face - left column - not a corner
+      // Back face - left column - not a corner
       else {
 
       }
     }
-    // Front face - right column
+    // Back face - right column
     else if (box_index % cube_length == (cube_length - 1)) {
-      //Front face - right column - upper right corner
+      //Back face - right column - lower right corner
       if (box_index == (cube_length - 1)) {
 
       }
-      //Front face - right column - lower right corner
+      //Back face - right column - upper right corner
       else if (box_index == (cube_length_squared - 1)) {
 
       }
-      //Front face - right column - not a corner
+      //Backface - right column - not a corner
       else {
 
       }
 
     }
     else {
-      //Front face - top row - not corner
+      //Back face - bottom row - not corner
       if (box_index % cube_length_squared < cube_length) {
 
       }
-      //Front face - bottom row - not corner
+      //Back face - top row - not corner
       else if (box_index % cube_length_squared > (cube_length_squared - cube_length)) {
 
       }
-      //Front face - not row/column cubes
+      //Back face - not row/column cubes
       else {
 
       }
     }
   }
-  //Back face
+
+  //Front face
   else if (box_index >= (total_cubes - cube_length_squared)) {
-    //Back face - left column
+    //Front face - left column
     if (box_index % cube_length == 0) {
-      //Back face - left column - upper left corner
+      //Back face - left column - lower left corner
       if (box_index == (total_cubes - cube_length_squared)) {
 
       }
-      //Back face - left column - lower left corner 
+      //Back face - left column - upper left corner 
       else if (box_index == (total_cubes - cube_length)) {
 
       }
@@ -234,12 +235,11 @@ vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
 
     else if (box_index % cube_length == (cube_length - 1)) {
 
-      //CHECK THIS CALCULATION: seems right...
-      //Back face - right column - upper right corner
+      //Back face - right column - lower right corner
       if (box_index == (total_cubes - cube_length_squared + (cube_length - 1))) {
 
       }
-      //Back face - right column - lower right corner
+      //Back face - right column - upper right corner
       else if (box_index == total_cubes - 1 ) {
 
       }
@@ -251,12 +251,12 @@ vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
     }
     //Back face - not a column 
     else {
-      //Back face - top row - not corner
-      if (box_index % cube_length_squared < (total_cubes - cube_length_squared + cube_length) {
+      //Back face - bottom row - not corner
+      if (box_index % cube_length_squared < (total_cubes - cube_length_squared + cube_length)) {
 
       }
-      //Back face - bottom row - not corner
-      else if (box_index % cube_length_squared > (total_cubes - cube_length) {
+      //Back face - top row - not corner
+      else if (box_index % cube_length_squared > (total_cubes - cube_length)) {
 
       }
       //Back face - not row/column cubes
@@ -265,7 +265,6 @@ vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
       }
     }
   }
-
 
   vector<int > return_vector;
   return return_vector;
