@@ -61,6 +61,64 @@ class BoundingBox {
     bool hitsBoundary(glm::vec3 position, glm::vec3 radius);
 };
 
+class Grid {
+  //vector < vector < vector < int > > >  grid_locs;
+  vector < vector <int > > grid_locs;
+  float min_val;
+  float max_val;
+  float cube_length;
+  int total_cubes;
+
+  public: 
+    Grid(){};
+    Grid(float min_val, float max_val, float cube_length);
+    void generateInitialGrid();
+    int insertCube(glm::vec3 position, float cube_length);
+};
+
+
+Grid::Grid(float minx, float maxx, float side_length) {
+  min_val = minx;
+  max_val = maxx;
+  cube_length = side_length;
+  total_cubes = int (max_val - min_val) / cube_length;
+}
+
+void Grid::generateInitialGrid() {
+  int max_cube_index = total_cubes * total_cubes * total_cubes; 
+  cout << "Total cubes: " << total_cubes << endl;
+  cout << "Max number of cubes = " << max_cube_index << endl;
+  for (int i = 0; i < max_cube_index; i++) {
+    vector<int> neighbor_indices;
+    neighbor_indices.push_back(-1);
+    neighbor_indices.push_back(-2);
+    grid_locs.push_back(neighbor_indices);
+  }
+  for (int j = 0; j < max_cube_index; j++) {
+    if (grid_locs[j].size() == 2) {
+      cout << "Success at index: " << j << endl;
+    }
+  }
+}
+
+int Grid::insertCube(glm::vec3 position, float cube_length) {
+  int column_offset = floor(position.x / cube_length);
+  int row_offset = floor(position.y / cube_length);
+  int depth_offset = floor(position.z / cube_length);
+
+  int total_cubes_squared = total_cubes * total_cubes;
+  int total_cubes_cubed = total_cubes_squared * total_cubes;
+
+  int grid_locs_index = column_offset + row_offset * (total_cubes)  + depth_offset * (total_cubes_squared);
+  if (grid_locs_index > (total_cubes_cubed) - 1) {
+    cout << "Index at " << grid_locs_index << " exceeded max index of " << (total_cubes_cubed - 1) << endl;
+    return -1000;
+  }
+  return grid_locs_index;
+}
+
+
+
 
 
 /* BoundingBox takes in a start vertex, which specifies the NEAR LOWER LEFT CORNER of the bounding 
@@ -128,6 +186,7 @@ Particle::Particle(glm::vec3 pos, glm::vec3 vel) {
         velocity = vel;
 }
 
+
 //****************************************************
 // Global Variables
 //****************************************************
@@ -136,13 +195,19 @@ Particle::Particle(glm::vec3 pos, glm::vec3 vel) {
 #define VIEWPORT_WIDTH  1200;
 Viewport    viewport;
 BoundingBox box;
+Grid grid;
+
 float CURRENT_TIME = 0.0f;
 float TIME_STEP = 0.0025f;
+
 float PARTICLE_RADIUS = 0.05f;
 float PARTICLE_MASS = 1.05f;
-float SMOOTHING_LENGTH = 0.1;
+
+float SMOOTHING_LENGTH = 0.5;
+
 float K = 5.0f;
 float REST_DENSITY = 10.0f;
+
 glm::vec3 GRAVITY = glm::vec3(0.0f, -9.8f, 0.0f);
 vector<Particle> particles;
 int numParts = 100;
@@ -253,8 +318,6 @@ void updateParticlePositions() {
     glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP+GRAVITY;
     
 
-    
-
     bool slow = abs(particles[i].velocity.y) < VELOCITY_THRESHOLD;
     particles[i].velocity = particles[i].velocity + (acceleration * TIME_STEP);
     bool should_stop = particles[i].velocity.y < VELOCITY_THRESHOLD;
@@ -269,8 +332,8 @@ void updateParticlePositions() {
     }
     
   }  
-      cout<<"POS:"<<' '<<particles[1].position[0]<<' '<<particles[1].position[1]<<' '<<particles[1].position[2]<<'\n';
-      cout<<"VEL:"<<' '<<particles[1].velocity[0]<<' '<<particles[1].velocity[1]<<' '<<particles[1].velocity[2]<<'\n';
+      // cout<<"POS:"<<' '<<particles[1].position[0]<<' '<<particles[1].position[1]<<' '<<particles[1].position[2]<<'\n';
+      // cout<<"VEL:"<<' '<<particles[1].velocity[0]<<' '<<particles[1].velocity[1]<<' '<<particles[1].velocity[2]<<'\n';
 }
 
 
@@ -605,6 +668,11 @@ void myDisplay() {
   drawBackground();
   drawParticles();
   //Scene cleanup
+
+
+  //Testing Neighbors algorithm
+  grid.generateInitialGrid();
+
   glFlush();
   glutSwapBuffers();// swap buffers (we earlier set double buffer)
 }
@@ -677,6 +745,7 @@ int main(int argc, char *argv[]) {
   glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
   // Initalize theviewport size
   box = BoundingBox(glm::vec3(-.70,-.75,-3), 1.5);
+  grid = Grid(-0.70, 1.5, SMOOTHING_LENGTH);
   viewport.w = VIEWPORT_WIDTH;
   viewport.h = VIEWPORT_HEIGHT;
   //Parse input file: where OBJ files are parsed
