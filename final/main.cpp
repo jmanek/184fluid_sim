@@ -370,6 +370,8 @@ float GRADIENT_THRESHOLD = 0.55f;
 //Surface tension of water
 float SIGMA = 4.9;
 
+bool PAUSED = false;
+
 
 //****************************************************
 // Checks bounding box collision. Return bool and sets damping vector appropriately.
@@ -806,11 +808,11 @@ void initScene(){
 //****************************************************
 void getKeys(unsigned char key, int x, int y) {
     switch(key) {
-      /*
       case ' ': {
-			exit(0);
-			break;
+  			exit(0);
+  			break;
 		  }
+      /*
       case 'n': {
 			Particle particle;
 			particle.position = glm::vec3(-0.70f, 0.5f, -3.5f);
@@ -827,16 +829,32 @@ void getKeys(unsigned char key, int x, int y) {
 			cout << "Particle added! Total particles: " << particles.size() << endl;
 			break;
 		  }*/
+      case 'p': {
+        for (int i = 0; i < particles.size(); i++) {
+          if (particles[i].velocity.y < 0.0f) {
+            particles[i].velocity.y = 5.0f;
+          }
+          else {
+            particles[i].velocity.y *= -1.0f;
+          }
+        }
+        break;
+      }
+
+      case 'x': {
+        PAUSED = ! PAUSED;
+        break;
+      }
       default:{
-      		Particle particle;
-			particle.position = glm::vec3(-0.70f, 0.5f, -3.5f);
-			int k = 4;
-			if (key %2 == 0) {
-				k = -4;
-			}
-			particle.velocity = glm::vec3((key-96), 0, (int)(key-96)/k);
-			particles.push_back(particle);
-			cout << "Particle added! Total particles: " << particles.size() << endl;
+      	Particle particle;
+			  particle.position = glm::vec3(-0.70f, 0.5f, -3.5f);
+			  int k = 4;
+		    if (key %2 == 0) {
+				  k = -4;
+			  }
+  			particle.velocity = glm::vec3((key-96), 0, (int)(key-96)/k);
+  			particles.push_back(particle);
+  			cout << "Particle added! Total particles: " << particles.size() << endl;
 			break;
 		}
       }
@@ -1039,40 +1057,42 @@ void drawParticles() {
 //****************************************************
 
 void myDisplay() {
-  CURRENT_TIME += TIME_STEP;
-  //Scene Setup
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the color buffer (sets everything to black)
-  glViewport(0, 0, viewport.w, viewport.h);
-  //Camera Setup:
-  glColor3f(0.0, 1.0, 0);
-  glMatrixMode(GL_PROJECTION);                  
-  glLoadIdentity();                            
-  gluPerspective(40.0f, viewport.w/viewport.h, 0.1f, 100.0f);
+  if (! PAUSED) {
+    CURRENT_TIME += TIME_STEP;
+    //Scene Setup
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the color buffer (sets everything to black)
+    glViewport(0, 0, viewport.w, viewport.h);
+    //Camera Setup:
+    glColor3f(0.0, 1.0, 0);
+    glMatrixMode(GL_PROJECTION);                  
+    glLoadIdentity();                            
+    gluPerspective(40.0f, viewport.w/viewport.h, 0.1f, 100.0f);
+    /*
+    gluPerspective(fov * zoom, aspect_ratio, z_near, z_far);
+    */
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity(); // make sure transformation is "zero'd"
+    /* Main Rendering loop: uses naive neighbor calculation ==> O(n^2) */
+    setupParticles();
+    calculateParticleDensities();
+    calculateParticleForces();
+    updateParticlePositions();
+    drawParticles();
+  }
+    /* Drawing sphere loop */
+    drawBoundingBox();
+    //drawBackground();
+    //Scene cleanup
   /*
-  gluPerspective(fov * zoom, aspect_ratio, z_near, z_far);
-  */
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity(); // make sure transformation is "zero'd"
-  /* Main Rendering loop: uses naive neighbor calculation ==> O(n^2) */
-  setupParticles();
-  calculateParticleDensities();
-  calculateParticleForces();
-  updateParticlePositions();
-  /* Drawing sphere loop */
-  drawBoundingBox();
-  //drawBackground();
-  drawParticles();
-  //Scene cleanup
-/*
-  findMinParticlePositions();
+    findMinParticlePositions();
 
-  //Testing Neighbors algorithm
-  grid.clearGrid();
-  grid.updateGrid(particles);
-*/
-  glFlush();
-  glutSwapBuffers();// swap buffers (we earlier set double buffer)
-}
+    //Testing Neighbors algorithm
+    grid.clearGrid();
+    grid.updateGrid(particles);
+  */
+    glFlush();
+    glutSwapBuffers();// swap buffers (we earlier set double buffer)
+  }
 
 
 //****************************************************
