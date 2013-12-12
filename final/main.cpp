@@ -150,205 +150,6 @@ class Grid {
     vector<int > generateNeighbors(int box_index, int cube_length);
 };
 
-/*
-//****************************************************
-// Grid constructor
-//****************************************************
-
-Grid::Grid(float minx, float maxx, float side_length) {
-  min_val = minx;
-  max_val = maxx;
-  cube_length = side_length;
-  total_cubes = int (max_val - min_val) / cube_length;
-}
-
-void Grid::clearGrid() {
-  int max_cube_index = total_cubes * total_cubes * total_cubes; 
-  cout << "Total cubes: " << total_cubes << endl;
-  cout << "Max number of cubes = " << max_cube_index << endl;
-  for (int i = 0; i < max_cube_index; i++) {
-    vector<int> neighbor_indices;
-    grid_locs.push_back(neighbor_indices);
-  }
-  for (int j = 0; j < max_cube_index; j++) {
-    if (grid_locs[j].size() == 0) {
-    }
-  }
-}
-
-//****************************************************
-// Insert a cube into the grid
-//****************************************************
-
-int Grid::insertCube(int particle_index, glm::vec3 position, float cube_length) {
-  cout << "hits in insertCube at " << particle_index << endl;
-  int column_offset = floor(position.x / cube_length);
-  int row_offset = floor(position.y / cube_length);
-  int depth_offset = floor(position.z / cube_length);
-
-  int total_cubes_squared = total_cubes * total_cubes;
-  int total_cubes_cubed = total_cubes_squared * total_cubes;
-
-  int grid_locs_index = column_offset + row_offset * (total_cubes)  + depth_offset * (total_cubes_squared);
-  if (grid_locs_index > (total_cubes_cubed) - 1) {
-      cout << "Broken index at:  " << grid_locs_index << endl;
-      return -1000;
-  }
-  else {
-    //cout << "hits here " << endl;
-    //Temporary Hack: set any negative value to the 0th box to avoid seg faults: fix w/ bounding box
-    if (grid_locs_index < 0) {
-      grid_locs[0].push_back(particle_index);
-    }
-    else {
-      grid_locs[grid_locs_index].push_back(particle_index);
-    }
-  }
-  return grid_locs_index;
-}
-
-
-//****************************************************
-// Update the grid
-//****************************************************
-void Grid::updateGrid(vector<Particle> particles){
-  clearGrid();
-  for (int i = 0; i < particles.size(); i++) {
-    glm::vec3 particle_position = particles[i].position;
-    int grid_index = insertCube(i, particle_position, cube_length);
-    cout << "Inserted at grid number: " << grid_index << endl;
-    if (grid_index == -1000) {
-      cout << "Broke at particle position : " << particle_position.x << ", " << particle_position.y << ", " << particle_position.z << endl;
-      break;
-    }
-  }
-}
-
-
-//****************************************************
-// Cube index validation
-//****************************************************
-void Grid::validateCubeIndex(int k) {
-  if (k < 0 || k > total_cubes) {
-    cout << "Invalid index at " << k << endl;
-  }
-}
-
-//****************************************************
-// Get the nearest neighbors in a cube
-//****************************************************
-vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
-  vector<int > neighborCubes;
-  int cube_length_squared = cube_length * cube_length;
-  int total_cube_size = cube_length_squared * cube_length;
-
-
-  // Back Face 
-  if (box_index < cube_length_squared) {
-    //Back face left column
-    if (box_index % cube_length == 0) {
-      //Back face - left column - lower left corner
-      if (box_index == 0) {
-
-      }
-      //Back face - left column - upper left corner
-      if (box_index == (cube_length_squared - cube_length)) {
-
-      }
-      // Back face - left column - not a corner
-      else {
-
-      }
-    }
-    // Back face - right column
-    else if (box_index % cube_length == (cube_length - 1)) {
-      //Back face - right column - lower right corner
-      if (box_index == (cube_length - 1)) {
-
-      }
-      //Back face - right column - upper right corner
-      else if (box_index == (cube_length_squared - 1)) {
-
-      }
-      //Backface - right column - not a corner
-      else {
-
-      }
-
-    }
-    else {
-      //Back face - bottom row - not corner
-      if (box_index % cube_length_squared < cube_length) {
-
-      }
-      //Back face - top row - not corner
-      else if (box_index % cube_length_squared > (cube_length_squared - cube_length)) {
-
-      }
-      //Back face - not row/column cubes
-      else {
-
-      }
-    }
-  }
-
-  //Front face
-  else if (box_index >= (total_cubes - cube_length_squared)) {
-    //Front face - left column
-    if (box_index % cube_length == 0) {
-      //Back face - left column - lower left corner
-      if (box_index == (total_cubes - cube_length_squared)) {
-
-      }
-      //Back face - left column - upper left corner 
-      else if (box_index == (total_cubes - cube_length)) {
-
-      }
-      //Back face - left column - not a corner
-      else {
-
-      }
-    }
-    //Back face - right column
-
-    else if (box_index % cube_length == (cube_length - 1)) {
-
-      //Back face - right column - lower right corner
-      if (box_index == (total_cubes - cube_length_squared + (cube_length - 1))) {
-
-      }
-      //Back face - right column - upper right corner
-      else if (box_index == total_cubes - 1 ) {
-
-      }
-
-      //Back face - right column - not a corner
-      else {
-
-      }
-    }
-    //Back face - not a column 
-    else {
-      //Back face - bottom row - not corner
-      if (box_index % cube_length_squared < (total_cubes - cube_length_squared + cube_length)) {
-
-      }
-      //Back face - top row - not corner
-      else if (box_index % cube_length_squared > (total_cubes - cube_length)) {
-
-      }
-      //Back face - not row/column cubes
-      else {
-
-      }
-    }
-  }
-
-  vector<int > return_vector;
-  return return_vector;
-
-}
-*/
 
 //****************************************************
 // Bounding Box collision global variables
@@ -471,14 +272,15 @@ Viewport    viewport;
 float CURRENT_TIME = 0.0f;
 float PARTICLE_MASS = 1.05f;
 
-float SMOOTHING_LENGTH = 0.5;
+float SMOOTHING_LENGTH = 2.0f;
 
 float K = 5.0f;
-float REST_DENSITY = 10.0f;
+float REST_DENSITY = 20.0f;
 glm::vec3 GRAVITY = glm::vec3(0.0f, -9.8f, 0.0f);
 vector<Particle> particles;
 int numParts = 100;
-GLint stacks = 6;
+GLint stacks = 10;
+int RENDER_BACKGROUND = 1;
 
 //****************************************************
 // Declare functions for later use
@@ -492,14 +294,24 @@ glm::vec3 w_pressure_gradient(glm::vec3, float, float);
 float vec3dist(glm::vec3, glm::vec3);
 float w_viscosity_laplacian(glm::vec3, float r, float h) ;
 
+
 //****************************************************
-// Drawing a particle
+// Distance between two vectors
 //****************************************************
 float vec3dist(glm::vec3 v1, glm::vec3 v2) {
    	float dx = abs(v2.x - v1.x);
    	float dy = abs(v2.y - v1.y);
    	float dz = abs(v2.z - v1.z);
-   	return sqrt(dx*dx+dy*dy+dz*dz);
+   	float dist = sqrt(dx*dx+dy*dy+dz*dz);
+   	//cout<<"Dist (printing from vec3dist): "<<dist<<"\n";
+   	return dist;
+}
+
+//****************************************************
+// Length of a vector (magnitude)
+//****************************************************
+float vec3length(glm::vec3 v1) {
+   	return sqrt(v1.x*v1.x+v1.y*v1.y+v1.z*v1.z);
 }
 
 
@@ -538,6 +350,7 @@ void calculateParticleDensities() {
       }
       float R = vec3dist(particles[i].position, particles[j].position);      
       glm::vec3 r = particles[i].position - particles[j].position;
+      //cout<<"WPOLY6: "<<w_poly6(r, R, h)<<"\n";
       if (R <= h) {
       	particles[i].density = particles[i].density + PARTICLE_MASS * w_poly6(r, R, h);
       }
@@ -546,10 +359,10 @@ void calculateParticleDensities() {
 }
 
 
-// BS value. Might want to actually replace with proper value, if possible.
-float GAS_CONSTANT = 8.314462;
-// viscosity coefficient for water at 30 C
-float eta = 0.0008;
+//BS value. Might want to actually replace with proper value, if possible.
+float GAS_CONSTANT = 1000;
+// viscosity coefficient
+float eta = 1000.0f;
 
 //****************************************************
 // Calculates other particle forces
@@ -558,8 +371,8 @@ float eta = 0.0008;
 void calculateParticleForces() {
 
 	float h = SMOOTHING_LENGTH;
-	cout<<"SMOOTHING LENGTH: "<<SMOOTHING_LENGTH<<"\n";
 	for (int i = 0; i < (signed)particles.size(); i++) {
+		//cout<<particles[i].density<<"\n";
 		for (int j = 0; j < (signed)particles.size(); j++) {
 			if (i == j) {
 				continue;
@@ -573,16 +386,19 @@ void calculateParticleForces() {
 				float density_n = particles[j].density;
 				float pressure_p = GAS_CONSTANT * (density_p - REST_DENSITY);
 				float pressure_n = GAS_CONSTANT * (density_n - REST_DENSITY);
+				
 
-				particles[i].pressure = particles[i].pressure + (w_pressure_gradient(r, R, h) * (PARTICLE_MASS * (pressure_p + pressure_n)) / (2 * density_n));
+				particles[i].pressure = PARTICLE_MASS*(pressure_p + pressure_n)/(2*density_n)*w_pressure_gradient(r, R, h);				
+				//cout<<"Pressure: "<<particles[i].pressure[0]<<" "<<particles[i].pressure[1]<<" "<<particles[i].pressure[2]<<"\n";
 				particles[i].viscosity = eta * PARTICLE_MASS * ((particles[j].velocity - particles[i].velocity) / density_n) * w_viscosity_laplacian(r, R, h);
 				particles[i].cfLap = particles[i].cfLap + PARTICLE_MASS / density_n * w_poly6_laplacian(r, R, h);
 				particles[i].cfGrad = particles[i].cfGrad + PARTICLE_MASS / density_n * w_poly6_gradient(r, R, h);
-		        /*
-        		particles[i].cfLap = particles[i].cfLap + PARTICLE_MASS / density_n * w_poly6(r, R,h);
-       		 	particles[i].cfGrad = particles[i].cfGrad + PARTICLE_MASS / density_n * w_poly6(r, R,h);
-        		*/
+        /*
+        particles[i].cfLap = particles[i].cfLap + PARTICLE_MASS / density_n * w_poly6(r, R,h);
+        particles[i].cfGrad = particles[i].cfGrad + PARTICLE_MASS / density_n * w_poly6(r, R,h);
+        */
 
+				
 			}
 		}
 	}
@@ -635,7 +451,10 @@ glm::vec3 w_pressure_gradient(glm::vec3 r, float R, float h) {
   float h_r_squared = pow(h_r, 2);
 
   glm::vec3 neg_r = r * -1.0f;
+  //cout<<"R: "<<r[0]<<" "<<r[1]<<" "<<r[2]<<"\n";
+  //cout<<"Neg_r: "<<neg_r[0]<<" "<<neg_r[1]<<" "<<neg_r[2]<<"\n";
   float weight = (45 / (PI * h_sixth * R)) * h_r_squared;
+  //cout<<"Ret: "<<neg_r[0]*weight<<" "<<neg_r[1]*weight<<" "<<neg_r[2]*weight<<"\n";
   return neg_r * weight;
 }
 
@@ -667,54 +486,74 @@ void findMinParticlePositions() {
 }
 
 
+float SIGMA = 250.0f;
+float threshold = 0.01;
+
 //****************************************************
 // Loops through particles and updates their positions
 //****************************************************
 
 void updateParticlePositions() {
-  for (int i = 0; i < (signed)particles.size(); i++) {
-    /* Gradient/color field calculations go here
-    * add in surface_tension, pressure, and viscosity later
-    */ 
+	for (int i = 0; i < (signed)particles.size(); i++) {
 
-
-    /*
-    glm::vec3 surface_tension = glm::vec3(0.0f, 0.0f, 0.0f); 
-    glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
-    */
-    //glm::vec3 particle_pressure = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 surface_tension = glm::vec3(0.0f, 0.0f, 0.0f); 
-    //glm::vec3 particle_pressure = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 particle_pressure = particles[i].pressure;
-    glm::vec3 viscosity = particles[i].viscosity;
-
-    glm::vec3 total_force = surface_tension + particle_pressure + viscosity;
-    //cout<<"Total force: "<<total_force[0]<<" "<<total_force[1]<<" "<<total_force[2]<<"\n";
-    glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP + GRAVITY;
-    //calculate new velocity
-    particles[i].velocity = particles[i].velocity + acceleration * TIME_STEP;
-
-    // if collision imminent, update position until it hits wall, then reverse proper 
-    // velocity component with damping and update position with remaining time
-    if(particles[i].willHitBoundingBox(TIME_STEP)){
-		float t = TIME_STEP;
-		while (particles[i].willHitBoundingBox(t)) {
-			//cout<<"DAMP: "<<dampVec[0]<<" "<<dampVec[1]<<" "<<dampVec[2]<<"\n";
-			particles[i].position = particles[i].position + (particles[i].velocity * timeToHit);
-			particles[i].velocity = particles[i].velocity * dampVec;
-			t = timeRemainder;
-			//cout<<"Updating position. Will Hit\n";
+		glm::vec3 surface_tension, particle_pressure, viscosity; 
+		
+		float grad_length = vec3length(particles[i].cfGrad);
+		if (grad_length >= threshold){
+			surface_tension = -1.0f*SIGMA*particles[i].cfLap * particles[i].cfGrad/grad_length;
 		}
-		particles[i].position = particles[i].position + (particles[i].velocity * timeRemainder);
-    }
-    //otherwise, just update position
-    else{
-    
-    particles[i].position = particles[i].position + (particles[i].velocity * TIME_STEP);
-    	//cout<<"Updating position\n";
-    
-    }
-  } 
+		else{
+			surface_tension = glm::vec3(0.0f, 0.0f, 0.0f); 
+		}
+		
+		//cout<<"Surface Tension: "<<surface_tension[0]<<" "<<surface_tension[1]<<" "<<surface_tension[2]<<"\n";
+		
+		particle_pressure = particles[i].pressure;
+		viscosity = particles[i].viscosity;
+		
+		glm::vec3 total_force = surface_tension + particle_pressure + viscosity;
+		glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP + GRAVITY;
+		particles[i].velocity = particles[i].velocity + acceleration * TIME_STEP;
+		// if collision imminent, update position until it hits wall, then reverse proper 
+		// velocity component with damping and update position with remaining time
+		if(particles[i].willHitBoundingBox(TIME_STEP)){
+			float t = TIME_STEP;
+			while (particles[i].willHitBoundingBox(t)) {
+				//cout<<"DAMP: "<<dampVec[0]<<" "<<dampVec[1]<<" "<<dampVec[2]<<"\n";
+				particles[i].position = particles[i].position + (particles[i].velocity * timeToHit);
+				particles[i].velocity = particles[i].velocity * dampVec;
+				t = timeRemainder;
+				//cout<<"Updating position. Will Hit\n";
+			}
+			particles[i].position = particles[i].position + (particles[i].velocity * timeRemainder);
+		}
+		//otherwise, just update position
+		else{
+			particles[i].position = particles[i].position + (particles[i].velocity * TIME_STEP);
+			//cout<<"Updating position\n";
+		}
+		/*
+		
+		for (int j = 0; j < particles.size(); j++) {
+			if (i == j) {
+				continue;
+			}
+			float d = vec3dist(particles[i].position, particles[j].position);
+			float minDist = 2*PARTICLE_RADIUS;
+			if (d < minDist) {
+				glm::vec3 tVec = particles[j].position - particles[i].position;
+				float scalar = sqrt((minDist*minDist)/(tVec[0]*tVec[0] + tVec[1]*tVec[1] + tVec[2]*tVec[2]));
+				particles[i].velocity = particles[i].velocity * 0.5f;
+				particles[j].velocity = particles[j].velocity + particles[i].velocity * 0.6f;
+				
+				particles[j].position = particles[j].position + (tVec*scalar);			
+			}
+		}
+		*/
+		
+		
+		
+	} 
 	//cout<<"TIME: " << CURRENT_TIME<<"\n:;
 	//cout<<"POS:"<<' '<<particles[1].position[0]<<' '<<particles[1].position[1]<<' '<<particles[1].position[2]<<'\n';
 	//cout<<"VEL:"<<' '<<particles[1].velocity[0]<<' '<<particles[1].velocity[1]<<' '<<particles[1].velocity[2]<<'\n';
@@ -963,17 +802,21 @@ void generateParticles(int number) {
 	float xMult = 0;
 	float yMult = 0;
 	float zMult = 0;
-	float x = box.ntl.x + PARTICLE_RADIUS;
+	float x = box.left_wall + PARTICLE_RADIUS;
 	float y = box.ntl.y - PARTICLE_RADIUS;
-	float z = box.ntl.z - PARTICLE_RADIUS;
+	float z = box.front_wall - PARTICLE_RADIUS;
 	while (number > 0) {
 		Particle particle;
 		particle.position = glm::vec3(x+xMult*distance, y+yMult*distance, z+zMult*distance);
-		particle.velocity = glm::vec3((float)(number%31)/(number%7), -1*((float)(number%19)), (float)(number%17));
-		//particle.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+		//particle.velocity = glm::vec3((float)(number%5), -1*((float)(number%7)), (float)(number%11));
+		particle.density = 1.0f;
+		particle.pressure = glm::vec3(0.0f, 0.0f, 0.0f);
+		particle.cfLap = 1.0f;
+    	particle.cfGrad = glm::vec3(0.0f, 0.0f, 0.0f);
+		particle.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
 		particles.push_back(particle);
 		zMult--;
-		if (z+zMult*distance <= box.ftl.z - PARTICLE_RADIUS) {
+		if (z+zMult*distance <= box.ftl.z + PARTICLE_RADIUS) {
 			zMult = 0;
 			xMult++;
 		}
@@ -1037,7 +880,9 @@ void myDisplay() {
   updateParticlePositions();
   /* Drawing sphere loop */
   drawBoundingBox();
-  drawBackground();
+  if (RENDER_BACKGROUND) {
+  	drawBackground();
+  }
   drawParticles();
   //Scene cleanup
 /*
@@ -1139,6 +984,23 @@ int main(int argc, char *argv[]) {
 		stacks = atoi(argv[i+1]);
 		i++;
 	}
+	else if (strcmp(argv[i], "-rd") == 0){
+		REST_DENSITY = atof(argv[i+1]);
+		i++;
+	}
+	else if (strcmp(argv[i], "-surf") == 0){
+		SIGMA = atof(argv[i+1]);
+		i++;
+	}
+	else if (strcmp(argv[i], "-smooth") == 0){
+		SMOOTHING_LENGTH = atof(argv[i+1]);
+		i++;
+	}
+	else if (strcmp(argv[i], "-back") == 0){
+		RENDER_BACKGROUND = atoi(argv[i+1]);
+		i++;
+	}
+	
   }
   
   glutInitWindowSize(viewport.w, viewport.h);
