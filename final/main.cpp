@@ -526,6 +526,7 @@ void setupParticles() {
   for (int i = 0; i < (signed)particles.size(); i++) {
     //Replace this with initialDensity
     particles[i].density = 1.0f;
+    particles[i].viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
     //particles[i].pressure = 0.0f;
     particles[i].pressure = glm::vec3(0.0f, 0.0f, 0.0f);
     particles[i].cfLap = 1.0f;
@@ -556,9 +557,9 @@ void calculateParticleDensities() {
 
 //BS value. Might want to actually replace with proper value, if possible.
 float GAS_CONSTANT = 8.314462;
-float eta = 0.0008;
+//float eta = 0.0008;
 
-//float eta = 2.0;
+float eta = 2.0;
 
 //****************************************************
 // Calculates other particle forces
@@ -649,7 +650,16 @@ glm::vec3 w_pressure_gradient(glm::vec3 r, float R, float h) {
 
 float w_viscosity_laplacian(glm::vec3 r, float R, float h)  {
   float h_fifth = pow(h, 5);
+
+  float first_part = (45 / PI * h_fifth);
+  float second_part = (1 - (R/h));
   float weight = (45 / (PI * h_fifth)) * (1 - (R / h));
+
+  cout << "first: " << first_part << endl;
+  cout << "second_part" << second_part << endl;
+  cout << "Weight: " << weight << endl;
+
+
   return weight;
 }
 
@@ -693,7 +703,8 @@ void updateParticlePositions() {
     glm::vec3 particle_pressure = particles[i].pressure;
     //surface_tension = glm::vec3(0.0f, 0.0f, 0.0f);
     //glm::vec3 viscosity = particles[i].viscosity;
-    //glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
+    cout << "viscosity: " << viscosity.x << " " << viscosity.y << " " << viscosity.z << endl;
     //glm::vec3 total_force = particle_pressure + viscosity;
     glm::vec3 total_force = particle_pressure + viscosity + surface_tension;
 
