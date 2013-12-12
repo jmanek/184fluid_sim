@@ -371,6 +371,7 @@ float GRADIENT_THRESHOLD = 0.55f;
 float SIGMA = 4.9;
 
 bool PAUSED = false;
+bool PRESSURE_MAPPED = false;
 
 
 //****************************************************
@@ -502,6 +503,7 @@ float SMOOTHING_LENGTH = 0.05;
 float K = 5.0f;
 float REST_DENSITY = 100.0f;
 
+
 glm::vec3 GRAVITY = glm::vec3(0.0f, -9.8f, 0.0f);
 vector<Particle> particles;
 int numParts = 100;
@@ -545,7 +547,8 @@ void Particle::draw() {
 void setupParticles() {
   for (int i = 0; i < (signed)particles.size(); i++) {
     //Replace this with initialDensity
-    particles[i].density = 1.0f;
+    //particles[i].density = 1.0f;
+    particles[i].density = 2.2f;
     particles[i].viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
     //particles[i].pressure = 0.0f;
     particles[i].pressure = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -577,8 +580,8 @@ void calculateParticleDensities() {
 
 //BS value. Might want to actually replace with proper value, if possible.
 float GAS_CONSTANT = 8.314462;
-//float eta = 0.0008;
-float eta = 20.0;
+float eta = 0.0008;
+//float eta = 200;
 //****************************************************
 // Calculates other particle forces
 //****************************************************
@@ -714,8 +717,8 @@ void updateParticlePositions() {
  
     glm::vec3 particle_pressure = particles[i].pressure;
     //surface_tension = glm::vec3(0.0f, 0.0f, 0.0f);
-    //glm::vec3 viscosity = particles[i].viscosity;
-    glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 viscosity = particles[i].viscosity;
+    //glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
     //cout << "viscosity: " << viscosity.x << " " << viscosity.y << " " << viscosity.z << endl;
     glm::vec3 total_force = particle_pressure + viscosity + surface_tension;
     glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP + GRAVITY;
@@ -841,6 +844,10 @@ void getKeys(unsigned char key, int x, int y) {
         break;
       }
 
+      case 'c': {
+        PRESSURE_MAPPED = ! PRESSURE_MAPPED;
+        break;
+      }
       case 'x': {
         PAUSED = ! PAUSED;
         break;
@@ -1036,9 +1043,21 @@ void drawParticles() {
 	GLfloat bgSpecular[] = {1.0, 1.0, 1.0, 1.0};
 	GLfloat bgShininess = 40;
 	glEnable(GL_COLOR_MATERIAL);
-	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT);
-	glColor4f(0.3, 0.4, 0.9, 1.0);
-	glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
+  float total_pressure = 1000.0f;
+  if (PRESSURE_MAPPED && (abs(particles[i].pressure.x) + abs(particles[i].pressure.y) + abs(particles[i].pressure.z)) > total_pressure) {
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT);
+    glColor4f(1.0, 1.0, 1.0, 1.0);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
+
+    glColor4f(1.0, 1.0, 1.0, 1.0);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, bgSpecular);
+    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, bgShininess);
+  }
+  else {
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT);
+    glColor4f(0.3, 0.4, 0.9, 1.0);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
+  }
 
 	glColor4f(0.2, 0.3, 0.9, 1.0);
   glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, bgSpecular);
