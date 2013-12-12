@@ -485,12 +485,12 @@ GLint stacks = 6;
 //****************************************************
 
 void generateParticles(int);
-float w_poly6(float, float);
-float w_pressure_gradient(float, float);
-float vec3dist(glm::vec3, glm::vec3);
-float w_viscosity_laplacian(float r, float h) ;
+float w_poly6(glm::vec3, float, float);
 glm::vec3 w_poly6_gradient(glm::vec3, float, float);
-float w_poly6_laplacian(float, float);
+float w_poly6_laplacian(glm::vec3, float, float);
+glm::vec3 w_pressure_gradient(glm::vec3, float, float);
+float vec3dist(glm::vec3, glm::vec3);
+float w_viscosity_laplacian(glm::vec3, float r, float h) ;
 
 //****************************************************
 // Drawing a particle
@@ -518,13 +518,10 @@ void setupParticles() {
   for (int i = 0; i < (signed)particles.size(); i++) {
     //Replace this with initialDensity
     particles[i].density = 1.0f;
+    //particles[i].pressure = 0.0f;
+    particles[i].pressure = glm::vec3(0.0f, 0.0f, 0.0f);
     particles[i].cfLap = 1.0f;
-    particles[i].cfGrad[0] = 1.0f;
-    particles[i].cfGrad[1] = 1.0f;
-    particles[i].cfGrad[2] = 1.0f;
-    particles[i].pressure[0] = 0.0f;
-    particles[i].pressure[1] = 0.0f;
-    particles[i].pressure[2] = 0.0f;
+    particles[i].cfGrad = glm::vec3(0.0f, 0.0f, 0.0f);
   }
 }
 
@@ -539,9 +536,10 @@ void calculateParticleDensities() {
       if (i == j) {
         continue;
       }
-      float r = vec3dist(particles[i].position, particles[j].position);      
-      if (r <= h) {
-      	particles[i].density = particles[i].density + PARTICLE_MASS * w_poly6(r, h);
+      float R = vec3dist(particles[i].position, particles[j].position);      
+      glm::vec3 r = particles[i].position - particles[j].position;
+      if (R <= h) {
+      	particles[i].density = particles[i].density + PARTICLE_MASS * w_poly6(r, R, h);
       }
     }
   }
@@ -566,27 +564,25 @@ void calculateParticleForces() {
 			if (i == j) {
 				continue;
 			}
-			glm::vec3 r = (particles[i].position - particles[j].position);
-			float rdist = vec3dist(particles[i].position, particles[j].position);
-			if (rdist <= h) {
+			glm::vec3 r = particles[i].position - particles[j].position;
+      		float R = vec3dist(particles[i].position, particles[j].position);
+
+
+			if (R <= h) {
 				float density_p = particles[i].density;
 				float density_n = particles[j].density;
 				float pressure_p = GAS_CONSTANT * (density_p - REST_DENSITY);
 				float pressure_n = GAS_CONSTANT * (density_n - REST_DENSITY);
 
-				particles[i].pressure = particles[i].pressure + (w_pressure_gradient(rdist, h) * 
-						(PARTICLE_MASS * (pressure_p + pressure_n)) / (2 * density_n));
-						
-				
-				particles[i].viscosity = particles[i].viscosity + eta * PARTICLE_MASS * 
-						((particles[j].velocity - particles[i].velocity) / density_n) * 
-						w_viscosity_laplacian(rdist, h);	
-						
-				cout<<"Visc: "<<particles[i].viscosity[0]<<" "<<particles[i].viscosity[1]<<" "<<particles[i].viscosity[2]<<" "<<"\n";	
-				particles[i].cfLap = particles[i].cfLap + PARTICLE_MASS / density_n * w_poly6_laplacian(rdist, h);
-				
-				particles[i].cfGrad = particles[i].cfGrad + PARTICLE_MASS / density_n * w_poly6_gradient(r, rdist, h);
-				
+				particles[i].pressure = particles[i].pressure + (w_pressure_gradient(r, R, h) * (PARTICLE_MASS * (pressure_p + pressure_n)) / (2 * density_n));
+				particles[i].viscosity = eta * PARTICLE_MASS * ((particles[j].velocity - particles[i].velocity) / density_n) * w_viscosity_laplacian(r, R, h);
+				particles[i].cfLap = particles[i].cfLap + PARTICLE_MASS / density_n * w_poly6_laplacian(r, R, h);
+				particles[i].cfGrad = particles[i].cfGrad + PARTICLE_MASS / density_n * w_poly6_gradient(r, R, h);
+		        /*
+        		particles[i].cfLap = particles[i].cfLap + PARTICLE_MASS / density_n * w_poly6(r, R,h);
+       		 	particles[i].cfGrad = particles[i].cfGrad + PARTICLE_MASS / density_n * w_poly6(r, R,h);
+        		*/
+
 			}
 		}
 	}
@@ -595,10 +591,10 @@ void calculateParticleForces() {
 //****************************************************
 // Smoothing Kernel Functions
 //****************************************************
-float w_poly6(float r, float h) {
-  if (0 <= r && r <= h) {
+float w_poly6(glm::vec3 r, float R, float h) {
+  if (0 <= R && R <= h) {
     float h_squared = h * h;
-    float r_squared = r * r;
+    float r_squared = R * R;
     float h_r_diff = h_squared - r_squared;
     h_r_diff = pow(h_r_diff, 3);
 
@@ -610,32 +606,42 @@ float w_poly6(float r, float h) {
   return 0.0f;  
 }
 
-glm::vec3 w_poly6_gradient(glm::vec3 r, float rdist, float h) {
-	glm::vec3 negativeR;
-	float scale = (945/(32*PI*h*h*h*h*h*h*h*h*h))*(h*h - rdist*rdist)*(h*h - rdist*rdist);
-	negativeR[0] = r[0] * -1.0f * scale;
-	negativeR[1] = r[1] * -1.0f * scale;
-	negativeR[2] = r[2] * -1.0f * scale;
-	return negativeR;
+glm::vec3 w_poly6_gradient(glm::vec3 r, float R, float h) {
+ float h_squared = h * h; 
+ float r_squared = R * R;
+ float hrsquared = pow((h_squared - r_squared), 2);
+ float h_ninth = pow(h, 9);
+ glm::vec3 neg_r = -1.0f * r;
+ float weight = (945 / (32 * PI * h_ninth)) * hrsquared;
+ return neg_r * weight;
+
 }
 
-float w_poly6_laplacian(float r, float h) {
-	return (945/(8*PI*h*h*h*h*h*h*h*h*h))*(h*h - r*r)*(r*r - (0.75)*(h*h - r*r));
+float w_poly6_laplacian(glm::vec3 r, float R, float h) {
+ float h_squared = h * h; 
+ float r_squared = R * R;
+ float hrsquared = pow((h_squared - r_squared), 2);
+ float h_ninth = pow(h, 9);
+
+ float lead_coeff = (945 / (8 * PI * h_ninth));
+ return lead_coeff * (hrsquared) * (r_squared - 0.75 * hrsquared);
+
 }
 
-float w_pressure_gradient(float r, float h) {
+glm::vec3 w_pressure_gradient(glm::vec3 r, float R, float h) {
   float h_sixth = pow(h, 6);
 
-  float h_r = h - r;
+  float h_r = h - R;
   float h_r_squared = pow(h_r, 2);
 
-  float weight = (-1.0f * r) * (45 / (PI * h_sixth * r)) * h_r_squared;
-  return weight;
+  glm::vec3 neg_r = r * -1.0f;
+  float weight = (45 / (PI * h_sixth * R)) * h_r_squared;
+  return neg_r * weight;
 }
 
-float w_viscosity_laplacian(float r, float h)  {
+float w_viscosity_laplacian(glm::vec3 r, float R, float h)  {
   float h_fifth = pow(h, 5);
-  float weight = (45 / (PI * h_fifth)) * (1 - (r / h));
+  float weight = (45 / (PI * h_fifth)) * (1 - (R / h));
   return weight;
 }
 
@@ -671,11 +677,17 @@ void updateParticlePositions() {
     * add in surface_tension, pressure, and viscosity later
     */ 
 
+
+    /*
     glm::vec3 surface_tension = glm::vec3(0.0f, 0.0f, 0.0f); 
+    glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
+    */
+    //glm::vec3 particle_pressure = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 surface_tension = glm::vec3(0.0f, 0.0f, 0.0f); 
+    //glm::vec3 particle_pressure = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 particle_pressure = particles[i].pressure;
-    //cout<<"Pressure: "<<particle_pressure[0]<<" "<<particle_pressure[1]<<" "<<particle_pressure[2]<<"\n";
     glm::vec3 viscosity = particles[i].viscosity;
-    //cout<<"Viscosity: "<<viscosity[0]<<" "<<viscosity[1]<<" "<<viscosity[2]<<"\n";
+
     glm::vec3 total_force = surface_tension + particle_pressure + viscosity;
     //cout<<"Total force: "<<total_force[0]<<" "<<total_force[1]<<" "<<total_force[2]<<"\n";
     glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP + GRAVITY;
