@@ -78,6 +78,8 @@ class BoundingBox {
     float rear_wall;
     float front_wall;
     float bottom_wall;
+    float top_wall;
+
     float sideLength;
     BoundingBox(){};
     BoundingBox(glm::vec3 start, float length);
@@ -119,6 +121,7 @@ BoundingBox::BoundingBox(glm::vec3 start, float length) {
     rear_wall = fll.z;
     front_wall = nll.z;
     bottom_wall = nll.y;
+    top_wall = ntr.y;
 }
 
 
@@ -458,7 +461,22 @@ bool Particle::willHitBoundingBox(float time) {
 			timeToHit = t;
 			timeRemainder = time - t;
 		} //cout<<"Time to hit bottom: "<<t<<"\n";
+  }
+
+  /*
+  if (velocity[1] != 0.0f && position[1] + (velocity[1] * TIME_STEP) + PARTICLE_RADIUS >= box.top_wall) {
+    float t = abs(box.top_wall - position[1] - PARTICLE_RADIUS) / velocity[1];
+    hit = true;
+    if (t < timeToHit) {  //    cout<<"damp set\n";
+      dampVec[0] = 1.0f;
+      dampVec[1] = DAMP;
+      dampVec[2] = 1.0f;
+      timeToHit = t;
+      timeRemainder = time - t;
+    } //cout<<"Time to hit bottom: "<<t<<"\n";
 	} 
+  */
+
 	return hit;
 }
 
@@ -558,9 +576,7 @@ void calculateParticleDensities() {
 //BS value. Might want to actually replace with proper value, if possible.
 float GAS_CONSTANT = 8.314462;
 //float eta = 0.0008;
-
-float eta = 2.0;
-
+float eta = 20.0;
 //****************************************************
 // Calculates other particle forces
 //****************************************************
@@ -588,7 +604,7 @@ void calculateParticleForces() {
         float pressure_n = K * (density_n - REST_DENSITY);
 
 				particles[i].pressure = particles[i].pressure + (w_pressure_gradient(r, R, h) * (PARTICLE_MASS) * (pressure_p + pressure_n)/(2 * density_n));
-				particles[i].viscosity = eta * PARTICLE_MASS * ((particles[j].velocity - particles[i].velocity) / density_n) * w_viscosity_laplacian(r, R, h);
+				particles[i].viscosity = particles[i].viscosity + eta * PARTICLE_MASS * ((particles[j].velocity - particles[i].velocity) / density_n) * w_viscosity_laplacian(r, R, h);
 				particles[i].cfLap = particles[i].cfLap + PARTICLE_MASS / density_n * w_poly6_laplacian(r, R, h);
 				particles[i].cfGrad = particles[i].cfGrad + PARTICLE_MASS / density_n * w_poly6_gradient(r, R, h);
 			}
@@ -654,12 +670,6 @@ float w_viscosity_laplacian(glm::vec3 r, float R, float h)  {
   float first_part = (45 / PI * h_fifth);
   float second_part = (1 - (R/h));
   float weight = (45 / (PI * h_fifth)) * (1 - (R / h));
-
-  cout << "first: " << first_part << endl;
-  cout << "second_part" << second_part << endl;
-  cout << "Weight: " << weight << endl;
-
-
   return weight;
 }
 
@@ -704,10 +714,8 @@ void updateParticlePositions() {
     //surface_tension = glm::vec3(0.0f, 0.0f, 0.0f);
     //glm::vec3 viscosity = particles[i].viscosity;
     glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
-    cout << "viscosity: " << viscosity.x << " " << viscosity.y << " " << viscosity.z << endl;
-    //glm::vec3 total_force = particle_pressure + viscosity;
+    //cout << "viscosity: " << viscosity.x << " " << viscosity.y << " " << viscosity.z << endl;
     glm::vec3 total_force = particle_pressure + viscosity + surface_tension;
-
     glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP + GRAVITY;
     //calculate new velocity
     particles[i].velocity = particles[i].velocity + acceleration * TIME_STEP;
