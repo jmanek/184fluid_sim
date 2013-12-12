@@ -355,12 +355,18 @@ vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
 //****************************************************
 float DAMP = -0.2f;
 static glm::vec3 dampVec;
-float PARTICLE_RADIUS = 0.05f;
+float PARTICLE_RADIUS = 0.01f;
 Grid grid;
 BoundingBox box;
+
 static float timeToHit = 0.0f;
 static float timeRemainder = 0.0f;
 float TIME_STEP = 0.0025f;
+float GRADIENT_THRESHOLD = 0.55f;
+
+//Surface tension of water
+float SIGMA = 4.9;
+
 
 //****************************************************
 // Checks bounding box collision. Return bool and sets damping vector appropriately.
@@ -471,10 +477,11 @@ Viewport    viewport;
 float CURRENT_TIME = 0.0f;
 float PARTICLE_MASS = 1.05f;
 
-float SMOOTHING_LENGTH = 0.5;
+float SMOOTHING_LENGTH = 0.05;
 
 float K = 5.0f;
-float REST_DENSITY = 10.0f;
+float REST_DENSITY = 100.0f;
+
 glm::vec3 GRAVITY = glm::vec3(0.0f, -9.8f, 0.0f);
 vector<Particle> particles;
 int numParts = 100;
@@ -551,6 +558,8 @@ void calculateParticleDensities() {
 float GAS_CONSTANT = 8.314462;
 float eta = 0.0008;
 
+//float eta = 2.0;
+
 //****************************************************
 // Calculates other particle forces
 //****************************************************
@@ -570,19 +579,17 @@ void calculateParticleForces() {
 			if (R <= h) {
 				float density_p = particles[i].density;
 				float density_n = particles[j].density;
-				float pressure_p = GAS_CONSTANT * (density_p - REST_DENSITY);
-				float pressure_n = GAS_CONSTANT * (density_n - REST_DENSITY);
+        //cout << "Density_p for " << i << ": " << density_p << endl;
+        //cout << "Density_n: for " << j << ": " << density_n << endl;
+				// float pressure_p = GAS_CONSTANT * (density_p - REST_DENSITY);
+				// float pressure_n = GAS_CONSTANT * (density_n - REST_DENSITY);
+        float pressure_p = K * (density_p - REST_DENSITY);
+        float pressure_n = K * (density_n - REST_DENSITY);
 
-				particles[i].pressure = particles[i].pressure + (w_pressure_gradient(r, R, h) * (PARTICLE_MASS * (pressure_p + pressure_n)) / (2 * density_n));
+				particles[i].pressure = particles[i].pressure + (w_pressure_gradient(r, R, h) * (PARTICLE_MASS) * (pressure_p + pressure_n)/(2 * density_n));
 				particles[i].viscosity = eta * PARTICLE_MASS * ((particles[j].velocity - particles[i].velocity) / density_n) * w_viscosity_laplacian(r, R, h);
 				particles[i].cfLap = particles[i].cfLap + PARTICLE_MASS / density_n * w_poly6_laplacian(r, R, h);
 				particles[i].cfGrad = particles[i].cfGrad + PARTICLE_MASS / density_n * w_poly6_gradient(r, R, h);
-        /*
-        particles[i].cfLap = particles[i].cfLap + PARTICLE_MASS / density_n * w_poly6(r, R,h);
-        particles[i].cfGrad = particles[i].cfGrad + PARTICLE_MASS / density_n * w_poly6(r, R,h);
-        */
-
-				
 			}
 		}
 	}
@@ -636,6 +643,7 @@ glm::vec3 w_pressure_gradient(glm::vec3 r, float R, float h) {
 
   glm::vec3 neg_r = r * -1.0f;
   float weight = (45 / (PI * h_sixth * R)) * h_r_squared;
+  //cout << "weight: " << (neg_r * weight).x << ", " << (neg_r * weight).y << ", " << (neg_r * weight).z << endl;
   return neg_r * weight;
 }
 
@@ -659,10 +667,6 @@ void findMinParticlePositions() {
     miny = min(miny, position.y);
     minz = min(minz, position.z);
   }
-  cout << "Min Values: " << endl;
-  cout << "Minx: " << minx << endl;
-  cout << "Miny: " << miny << endl;
-  cout << "Minz: " << minz << endl;
 
 }
 
@@ -677,18 +681,22 @@ void updateParticlePositions() {
     * add in surface_tension, pressure, and viscosity later
     */ 
 
+    glm::vec3 surface_tension = glm::vec3(0.0f, 0.0f, 0.0f); 
+    glm::vec3 grad = particles[i].cfGrad;
+    float gradient_length = sqrt(pow(grad.x, 2) + pow(grad.y, 2) + pow(grad.z, 2));
 
-    /*
-    glm::vec3 surface_tension = glm::vec3(0.0f, 0.0f, 0.0f); 
-    glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
-    */
-    //glm::vec3 particle_pressure = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 surface_tension = glm::vec3(0.0f, 0.0f, 0.0f); 
-    //glm::vec3 particle_pressure = glm::vec3(0.0f, 0.0f, 0.0f);
+    if (gradient_length >= GRADIENT_THRESHOLD) {
+      surface_tension = -1.0f * SIGMA * particles[i].cfLap * (particles[i].cfGrad / gradient_length);
+    }
+
+ 
     glm::vec3 particle_pressure = particles[i].pressure;
-    glm::vec3 viscosity = particles[i].viscosity;
+    //surface_tension = glm::vec3(0.0f, 0.0f, 0.0f);
+    //glm::vec3 viscosity = particles[i].viscosity;
+    //glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
+    //glm::vec3 total_force = particle_pressure + viscosity;
+    glm::vec3 total_force = particle_pressure + viscosity + surface_tension;
 
-    glm::vec3 total_force = surface_tension + particle_pressure + viscosity;
     glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP + GRAVITY;
     //calculate new velocity
     particles[i].velocity = particles[i].velocity + acceleration * TIME_STEP;
@@ -698,11 +706,9 @@ void updateParticlePositions() {
     if(particles[i].willHitBoundingBox(TIME_STEP)){
 		float t = TIME_STEP;
 		while (particles[i].willHitBoundingBox(t)) {
-			//cout<<"DAMP: "<<dampVec[0]<<" "<<dampVec[1]<<" "<<dampVec[2]<<"\n";
 			particles[i].position = particles[i].position + (particles[i].velocity * timeToHit);
 			particles[i].velocity = particles[i].velocity * dampVec;
 			t = timeRemainder;
-			//cout<<"Updating position. Will Hit\n";
 		}
 		particles[i].position = particles[i].position + (particles[i].velocity * timeRemainder);
     }
@@ -710,8 +716,6 @@ void updateParticlePositions() {
     else{
     
     particles[i].position = particles[i].position + (particles[i].velocity * TIME_STEP);
-    	//cout<<"Updating position\n";
-    
     }
   } 
 	//cout<<"TIME: " << CURRENT_TIME<<"\n:;
@@ -998,8 +1002,9 @@ void drawParticles() {
 	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT);
 	glColor4f(0.3, 0.4, 0.9, 1.0);
 	glColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
+
 	glColor4f(0.2, 0.3, 0.9, 1.0);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, bgSpecular);
+  glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, bgSpecular);
 	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, bgShininess);
 	
     glPushMatrix();
@@ -1036,7 +1041,7 @@ void myDisplay() {
   updateParticlePositions();
   /* Drawing sphere loop */
   drawBoundingBox();
-  drawBackground();
+  //drawBackground();
   drawParticles();
   //Scene cleanup
 /*
