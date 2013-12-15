@@ -463,6 +463,18 @@ AABB::AABB(vector<vector<glm::vec3>> verts) {
 	}
 }
 
+void translateVertices(vector<vector<glm::vec3>> vert, float x, float y, float z) {
+	for(int i=0; vert.size(); i++) {
+		for(int j=0; vert[i].size(); j++) {
+			vert[i][j].x += x;
+			vert[i][j].y += y;
+			vert[i][j].z += z;
+		}
+	}
+}
+
+
+
 //****************************************************
 // Global Variables
 //****************************************************
