@@ -39,6 +39,7 @@ using namespace std;
 class Particle {
   public:
     Particle(){};
+    int gridIndex;
     glm::vec3 position; 
     glm::vec3 velocity;
     glm::vec3 pressure;
@@ -141,19 +142,23 @@ class Grid {
   float max_val;
   float cube_length;
   int total_cubes;
+  vector <int > occupied_locs;
+  vector <vector <int > > neighbor_cube_list; 
 
   public: 
     Grid(){};
     Grid(float min_val, float max_val, float cube_length);
+    void initialize();
     void clearGrid();
 
-    int insertCube(int particle_index, glm::vec3 position, float cube_length);
+    int insertCube(int particle_index, glm::vec3 position, float cube_length, vector<Particle> particles);
     void updateGrid(vector<Particle> particles);
     void validateCubeIndex(int k);
     vector<int > generateNeighbors(int box_index, int cube_length);
+    vector<int > consolidateNeighbors(int neighbor_index);
 };
 
-/*
+
 //****************************************************
 // Grid constructor
 //****************************************************
@@ -165,26 +170,42 @@ Grid::Grid(float minx, float maxx, float side_length) {
   total_cubes = int (max_val - min_val) / cube_length;
 }
 
-void Grid::clearGrid() {
+void Grid::initialize() {
   int max_cube_index = total_cubes * total_cubes * total_cubes; 
-  cout << "Total cubes: " << total_cubes << endl;
-  cout << "Max number of cubes = " << max_cube_index << endl;
   for (int i = 0; i < max_cube_index; i++) {
     vector<int> neighbor_indices;
     grid_locs.push_back(neighbor_indices);
   }
+
+  cout << "cube_length: "  << cube_length << endl;
+  cout << "total_cubes: " << total_cubes << endl;
+  int count = 0;
   for (int j = 0; j < max_cube_index; j++) {
-    if (grid_locs[j].size() == 0) {
+    vector<int > neighbor_cubes = generateNeighbors(j, total_cubes);
+    neighbor_cube_list.push_back(neighbor_cubes);
+    if (j == 0) {
+      cout << "neighbor_cubes.size for 0: " << neighbor_cubes.size() << endl;
     }
   }
+}
+
+
+void Grid::clearGrid() {
+  int max_cube_index = total_cubes * total_cubes * total_cubes; 
+  grid_locs.clear();
+  for (int i = 0; i < occupied_locs.size(); i++) {
+    vector<int> neighbor_indices;
+    grid_locs[occupied_locs[i]] = neighbor_indices;
+  }
+  occupied_locs.clear();
 }
 
 //****************************************************
 // Insert a cube into the grid
 //****************************************************
 
-int Grid::insertCube(int particle_index, glm::vec3 position, float cube_length) {
-  cout << "hits in insertCube at " << particle_index << endl;
+int Grid::insertCube(int particle_index, glm::vec3 position, float cube_length, vector<Particle > particles) {
+  //cout << "hits in insertCube at " << particle_index << endl;
   int column_offset = floor(position.x / cube_length);
   int row_offset = floor(position.y / cube_length);
   int depth_offset = floor(position.z / cube_length);
@@ -193,18 +214,23 @@ int Grid::insertCube(int particle_index, glm::vec3 position, float cube_length) 
   int total_cubes_cubed = total_cubes_squared * total_cubes;
 
   int grid_locs_index = column_offset + row_offset * (total_cubes)  + depth_offset * (total_cubes_squared);
+  //cout << "grid_locs_index: " << grid_locs_index << endl;
+
+  occupied_locs.push_back(grid_locs_index);
+
+  //cout << "grid_locs_index " << grid_locs_index << endl;
   if (grid_locs_index > (total_cubes_cubed) - 1) {
       cout << "Broken index at:  " << grid_locs_index << endl;
       return -1000;
   }
   else {
-    //cout << "hits here " << endl;
-    //Temporary Hack: set any negative value to the 0th box to avoid seg faults: fix w/ bounding box
+    //Temporary Hack: set any negative value to the 0th box to avoid seg faults: fixed when bounding box moved to lowest point at origin
     if (grid_locs_index < 0) {
       grid_locs[0].push_back(particle_index);
     }
     else {
       grid_locs[grid_locs_index].push_back(particle_index);
+      particles[particle_index].gridIndex = grid_locs_index;
     }
   }
   return grid_locs_index;
@@ -218,8 +244,9 @@ void Grid::updateGrid(vector<Particle> particles){
   clearGrid();
   for (int i = 0; i < particles.size(); i++) {
     glm::vec3 particle_position = particles[i].position;
-    int grid_index = insertCube(i, particle_position, cube_length);
-    cout << "Inserted at grid number: " << grid_index << endl;
+    int grid_index = insertCube(i, particle_position, cube_length, particles);
+    //cout << "particles[i].gridIndex: " << particles[i].gridIndex << endl;
+    //cout << "Inserted at grid number: " << grid_index << endl;
     if (grid_index == -1000) {
       cout << "Broke at particle position : " << particle_position.x << ", " << particle_position.y << ", " << particle_position.z << endl;
       break;
@@ -240,8 +267,9 @@ void Grid::validateCubeIndex(int k) {
 //****************************************************
 // Get the nearest neighbors in a cube
 //****************************************************
+
 vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
-  vector<int > neighborCubes;
+  vector<int > neighbors;
   int cube_length_squared = cube_length * cube_length;
   int total_cube_size = cube_length_squared * cube_length;
 
@@ -252,107 +280,470 @@ vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
     if (box_index % cube_length == 0) {
       //Back face - left column - lower left corner
       if (box_index == 0) {
-
+        neighbors.push_back(box_index+1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared + 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length);
+        neighbors.push_back(box_index + cube_length_squared + cube_length + 1);
       }
       //Back face - left column - upper left corner
-      if (box_index == (cube_length_squared - cube_length)) {
+      else if (box_index == (cube_length_squared - cube_length)) {
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared + 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length);
+        neighbors.push_back(box_index + cube_length_squared - cube_length + 1);
 
       }
       // Back face - left column - not a corner
       else {
-
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length + 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared + 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length);
+        neighbors.push_back(box_index + cube_length_squared + cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length);
+        neighbors.push_back(box_index + cube_length_squared - cube_length + 1);
       }
     }
     // Back face - right column
     else if (box_index % cube_length == (cube_length - 1)) {
       //Back face - right column - lower right corner
       if (box_index == (cube_length - 1)) {
-
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared - 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length);
+        neighbors.push_back(box_index + cube_length_squared + cube_length - 1);
       }
       //Back face - right column - upper right corner
       else if (box_index == (cube_length_squared - 1)) {
-
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared - 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length);
+        neighbors.push_back(box_index + cube_length_squared - cube_length - 1);
       }
       //Backface - right column - not a corner
       else {
-
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length - 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared - 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length);
+        neighbors.push_back(box_index + cube_length_squared + cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length);
+        neighbors.push_back(box_index + cube_length_squared - cube_length - 1);
       }
-
     }
     else {
       //Back face - bottom row - not corner
       if (box_index % cube_length_squared < cube_length) {
-
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length + 1);
+        neighbors.push_back(box_index + cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared + 1);
+        neighbors.push_back(box_index + cube_length_squared - 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length);
+        neighbors.push_back(box_index + cube_length_squared + cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length - 1);
       }
       //Back face - top row - not corner
       else if (box_index % cube_length_squared > (cube_length_squared - cube_length)) {
-
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length + 1);
+        neighbors.push_back(box_index - cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared + 1);
+        neighbors.push_back(box_index + cube_length_squared - 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length);
+        neighbors.push_back(box_index + cube_length_squared - cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length - 1);
       }
       //Back face - not row/column cubes
       else {
-
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length + 1);
+        neighbors.push_back(box_index + cube_length - 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length + 1);
+        neighbors.push_back(box_index - cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared + 1);
+        neighbors.push_back(box_index + cube_length_squared - 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length);
+        neighbors.push_back(box_index + cube_length_squared - cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length);
+        neighbors.push_back(box_index + cube_length_squared + cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length - 1);
       }
     }
   }
 
   //Front face
-  else if (box_index >= (total_cubes - cube_length_squared)) {
+  else if (box_index >= (total_cube_size - cube_length_squared)) {
     //Front face - left column
     if (box_index % cube_length == 0) {
-      //Back face - left column - lower left corner
-      if (box_index == (total_cubes - cube_length_squared)) {
-
+      //Front face - left column - lower left corner
+      if (box_index == (total_cube_size - cube_length_squared)) {
+        neighbors.push_back(box_index+1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared + 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length);
+        neighbors.push_back(box_index - cube_length_squared + cube_length + 1);
       }
-      //Back face - left column - upper left corner 
-      else if (box_index == (total_cubes - cube_length)) {
-
+      //Front face - left column - upper left corner 
+      else if (box_index == (total_cube_size - cube_length)) {
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared + 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length);
+        neighbors.push_back(box_index - cube_length_squared - cube_length + 1);
       }
-      //Back face - left column - not a corner
+      //Front face - left column - not a corner
       else {
-
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length + 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared + 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length);
+        neighbors.push_back(box_index - cube_length_squared + cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length);
+        neighbors.push_back(box_index - cube_length_squared - cube_length + 1);
       }
     }
-    //Back face - right column
+    //Front face - right column
 
     else if (box_index % cube_length == (cube_length - 1)) {
 
-      //Back face - right column - lower right corner
-      if (box_index == (total_cubes - cube_length_squared + (cube_length - 1))) {
-
+      //Front face - right column - lower right corner
+      if (box_index == (total_cube_size - cube_length_squared + (cube_length - 1))) {
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared - 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length);
+        neighbors.push_back(box_index - cube_length_squared + cube_length - 1);
       }
-      //Back face - right column - upper right corner
-      else if (box_index == total_cubes - 1 ) {
-
+      //Front face - right column - upper right corner
+      else if (box_index == total_cube_size - 1 ) {
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared - 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length);
+        neighbors.push_back(box_index - cube_length_squared - cube_length - 1);
       }
 
-      //Back face - right column - not a corner
+      //Front face - right column - not a corner
       else {
-
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length - 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared - 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length);
+        neighbors.push_back(box_index - cube_length_squared + cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length);
+        neighbors.push_back(box_index - cube_length_squared - cube_length - 1);
       }
     }
-    //Back face - not a column 
+    //Front face - not a column 
     else {
-      //Back face - bottom row - not corner
-      if (box_index % cube_length_squared < (total_cubes - cube_length_squared + cube_length)) {
-
+      //Front face - bottom row - not corner
+      if (box_index % cube_length_squared < (total_cube_size - cube_length_squared + cube_length)) {
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length + 1);
+        neighbors.push_back(box_index + cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared + 1);
+        neighbors.push_back(box_index - cube_length_squared - 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length);
+        neighbors.push_back(box_index - cube_length_squared + cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length - 1);
       }
-      //Back face - top row - not corner
-      else if (box_index % cube_length_squared > (total_cubes - cube_length)) {
-
+      //Front face - top row - not corner
+      else if (box_index % cube_length_squared > (total_cube_size - cube_length)) {
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length + 1);
+        neighbors.push_back(box_index - cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared + 1);
+        neighbors.push_back(box_index - cube_length_squared - 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length);
+        neighbors.push_back(box_index - cube_length_squared - cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length - 1);
       }
-      //Back face - not row/column cubes
+      //Front face - not row/column cubes
       else {
-
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length + 1);
+        neighbors.push_back(box_index + cube_length - 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length + 1);
+        neighbors.push_back(box_index - cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared + 1);
+        neighbors.push_back(box_index - cube_length_squared - 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length);
+        neighbors.push_back(box_index - cube_length_squared - cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length);
+        neighbors.push_back(box_index - cube_length_squared + cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length - 1);
       }
     }
   }
 
-  vector<int > return_vector;
-  return return_vector;
+  else if (box_index % cube_length == 0) {
+    //Left face, top row
+    if (box_index % cube_length_squared == (cube_length_squared - cube_length)) {
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared + 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length);
+        neighbors.push_back(box_index - cube_length_squared - cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared + 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length);
+        neighbors.push_back(box_index + cube_length_squared - cube_length + 1);
+    }
+    //Left face, bottom row
+    else if (box_index % cube_length_squared < cube_length) {
+        neighbors.push_back(box_index + 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared + 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length);
+        neighbors.push_back(box_index - cube_length_squared + cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared + 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length);
+        neighbors.push_back(box_index + cube_length_squared + cube_length + 1);
+    }
+    //Left face, every other value
+    else {
+        neighbors.push_back(box_index + 1);
+
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length + 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length + 1);
+
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared + 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length);
+        neighbors.push_back(box_index - cube_length_squared + cube_length + 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length);
+        neighbors.push_back(box_index - cube_length_squared - cube_length + 1);
+
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared + 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length);
+        neighbors.push_back(box_index + cube_length_squared + cube_length + 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length);
+        neighbors.push_back(box_index + cube_length_squared - cube_length + 1);
+    }
+  }
+
+  //Right face
+  else if (box_index % cube_length == (cube_length - 1)) {
+    //Right face, top row
+    if (box_index % cube_length_squared == (cube_length_squared - 1)) {
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared - 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length);
+        neighbors.push_back(box_index - cube_length_squared - cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared - 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length);
+        neighbors.push_back(box_index + cube_length_squared - cube_length - 1);
+    }
+    //Right face, bottom row
+    else if (box_index % cube_length_squared < cube_length) {
+        neighbors.push_back(box_index - 1);
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared - 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length);
+        neighbors.push_back(box_index - cube_length_squared + cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared - 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length);
+        neighbors.push_back(box_index + cube_length_squared + cube_length - 1);
+    }
+    //Right face, any other value
+    else {
+        neighbors.push_back(box_index - 1);
+
+        neighbors.push_back(box_index + cube_length);
+        neighbors.push_back(box_index + cube_length - 1);
+        neighbors.push_back(box_index - cube_length);
+        neighbors.push_back(box_index - cube_length - 1);
+
+        neighbors.push_back(box_index - cube_length_squared);
+        neighbors.push_back(box_index - cube_length_squared - 1);
+        neighbors.push_back(box_index - cube_length_squared + cube_length);
+        neighbors.push_back(box_index - cube_length_squared + cube_length - 1);
+        neighbors.push_back(box_index - cube_length_squared - cube_length);
+        neighbors.push_back(box_index - cube_length_squared - cube_length - 1);
+
+        neighbors.push_back(box_index + cube_length_squared);
+        neighbors.push_back(box_index + cube_length_squared - 1);
+        neighbors.push_back(box_index + cube_length_squared + cube_length);
+        neighbors.push_back(box_index + cube_length_squared + cube_length - 1);
+        neighbors.push_back(box_index + cube_length_squared - cube_length);
+        neighbors.push_back(box_index + cube_length_squared - cube_length - 1);
+    }
+  }
+
+  //Top face 
+  else if (box_index % cube_length_squared >= (cube_length_squared - cube_length)){
+    //Should just be one case: remaining squares inside
+    neighbors.push_back(box_index - 1);
+    neighbors.push_back(box_index + 1);
+
+    neighbors.push_back(box_index - cube_length);
+    neighbors.push_back(box_index - cube_length - 1);
+    neighbors.push_back(box_index - cube_length + 1);
+
+    neighbors.push_back(box_index - cube_length_squared);
+    neighbors.push_back(box_index - cube_length_squared - 1);
+    neighbors.push_back(box_index - cube_length_squared + 1);
+    neighbors.push_back(box_index - cube_length_squared - cube_length);
+    neighbors.push_back(box_index - cube_length_squared - cube_length - 1);
+    neighbors.push_back(box_index - cube_length_squared - cube_length + 1);
+
+    neighbors.push_back(box_index + cube_length_squared);
+    neighbors.push_back(box_index + cube_length_squared - 1);
+    neighbors.push_back(box_index + cube_length_squared + 1);
+
+    neighbors.push_back(box_index + cube_length_squared - cube_length);
+    neighbors.push_back(box_index + cube_length_squared - cube_length - 1);
+    neighbors.push_back(box_index + cube_length_squared - cube_length + 1);
+  }
+  //Bottom face
+  else if (box_index % cube_length_squared < cube_length) {
+    //Should just be one case: remaining squares inside
+    neighbors.push_back(box_index - 1);
+    neighbors.push_back(box_index + 1);
+
+    neighbors.push_back(box_index + cube_length);
+    neighbors.push_back(box_index + cube_length - 1);
+    neighbors.push_back(box_index + cube_length + 1);
+
+    neighbors.push_back(box_index - cube_length_squared);
+    neighbors.push_back(box_index - cube_length_squared - 1);
+    neighbors.push_back(box_index - cube_length_squared + 1);
+    neighbors.push_back(box_index - cube_length_squared + cube_length);
+    neighbors.push_back(box_index - cube_length_squared + cube_length - 1);
+    neighbors.push_back(box_index - cube_length_squared + cube_length + 1);
+
+    neighbors.push_back(box_index + cube_length_squared);
+    neighbors.push_back(box_index + cube_length_squared - 1);
+    neighbors.push_back(box_index + cube_length_squared + 1);
+    
+    neighbors.push_back(box_index + cube_length_squared + cube_length);
+    neighbors.push_back(box_index + cube_length_squared + cube_length - 1);
+    neighbors.push_back(box_index + cube_length_squared + cube_length + 1);
+  }
+  //The rest of the cubes: everything inside of the cube
+  else {
+    neighbors.push_back(box_index - 1);
+    neighbors.push_back(box_index + 1);
+
+    neighbors.push_back(box_index + cube_length);
+    neighbors.push_back(box_index + cube_length - 1);
+    neighbors.push_back(box_index + cube_length + 1);
+    neighbors.push_back(box_index - cube_length);
+    neighbors.push_back(box_index - cube_length - 1);
+    neighbors.push_back(box_index - cube_length + 1);
+
+    neighbors.push_back(box_index - cube_length_squared);
+    neighbors.push_back(box_index - cube_length_squared - 1);
+    neighbors.push_back(box_index - cube_length_squared + 1);
+    neighbors.push_back(box_index - cube_length_squared + cube_length);
+    neighbors.push_back(box_index - cube_length_squared + cube_length - 1);
+    neighbors.push_back(box_index - cube_length_squared + cube_length + 1);
+    neighbors.push_back(box_index - cube_length_squared - cube_length);
+    neighbors.push_back(box_index - cube_length_squared - cube_length - 1);
+    neighbors.push_back(box_index - cube_length_squared - cube_length + 1);
+
+    neighbors.push_back(box_index + cube_length_squared);
+    neighbors.push_back(box_index + cube_length_squared - 1);
+    neighbors.push_back(box_index + cube_length_squared + 1);
+    
+    neighbors.push_back(box_index + cube_length_squared + cube_length);
+    neighbors.push_back(box_index + cube_length_squared + cube_length - 1);
+    neighbors.push_back(box_index + cube_length_squared + cube_length + 1);
+    neighbors.push_back(box_index + cube_length_squared - cube_length);
+    neighbors.push_back(box_index + cube_length_squared - cube_length - 1);
+    neighbors.push_back(box_index + cube_length_squared - cube_length + 1);
+  } 
+  neighbors.push_back(box_index);
+
+  return neighbors;
 
 }
-*/
 
+vector<int > Grid::consolidateNeighbors(int box_index) {
+  vector<int > neighbors_to_current = neighbor_cube_list[box_index];
+  vector<int > return_vec;
+  for (int i = 0; i < neighbors_to_current.size(); i++) {
+    vector<int > neighbor_particles = grid_locs[i];
+    for (int j = 0; j < neighbor_particles.size(); j++) {
+      return_vec.push_back(neighbor_particles[j]);
+    }
+  }
+  return return_vec;
+} 
 //****************************************************
 // Bounding Box collision global variables
 //****************************************************
@@ -548,6 +939,7 @@ void setupParticles() {
   for (int i = 0; i < (signed)particles.size(); i++) {
     //Replace this with initialDensity
     //particles[i].density = 1.0f;
+    //particles[i].gridIndex = 0.0f;
     particles[i].density = 2.2f;
     particles[i].viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
     //particles[i].pressure = 0.0f;
@@ -563,9 +955,24 @@ void setupParticles() {
 //****************************************************
 void calculateParticleDensities() {
   float h = SMOOTHING_LENGTH;
+
   for (int i = 0; i < (signed)particles.size(); i++) {
-    for (int j = 0; j < (signed)particles.size(); j++) {
+    //cout << "Grid index: " << particles[i].gridIndex << endl;
+    vector<int > neighbors = grid.consolidateNeighbors(particles[i].gridIndex);
+    /*
+    for (int l = 0; l < neighbors.size(); l++) {
+      cout << "Neighbor for index at : " << i << ": " << l << endl;
+    }
+    */
+    //for (int j = 0; j < (signed)particles.size(); j++) {
+    for (int j = 0; j < neighbors.size(); j++) {
+
+      /*
       if (i == j) {
+        continue;
+      }
+      */
+      if (particles[i].position.x == particles[j].position.x && particles[i].position.y == particles[j].position.y && particles[i].position.z == particles[j].position.z){
         continue;
       }
       float R = vec3dist(particles[i].position, particles[j].position);      
@@ -590,13 +997,27 @@ void calculateParticleForces() {
 
 	float h = SMOOTHING_LENGTH;
 	for (int i = 0; i < (signed)particles.size(); i++) {
+    vector<int > neighbors = grid.consolidateNeighbors(particles[i].gridIndex);
+
+    for (int j = 0; j < neighbors.size(); j++) {
+
+      /*
+      if (i == j) {
+        continue;
+      }
+      */
+      if (particles[i].position.x == particles[j].position.x && particles[i].position.y == particles[j].position.y && particles[i].position.z == particles[j].position.z){
+        continue;
+      }
+    /*
 		for (int j = 0; j < (signed)particles.size(); j++) {
 			if (i == j) {
 				continue;
 			}
-			glm::vec3 r = particles[i].position - particles[j].position;
-      float R = vec3dist(particles[i].position, particles[j].position);
+      */
 
+      glm::vec3 r = particles[i].position - particles[j].position;
+      float R = vec3dist(particles[i].position, particles[j].position);
 
 			if (R <= h) {
 				float density_p = particles[i].density;
@@ -856,10 +1277,12 @@ void getKeys(unsigned char key, int x, int y) {
       	Particle particle;
 			  particle.position = glm::vec3(-0.70f, 0.5f, -3.5f);
 			  int k = 4;
+        //NOTE: B AND A CAUSE A BUS ERROR
 		    if (key %2 == 0) {
 				  k = -4;
 			  }
   			particle.velocity = glm::vec3((key-96), 0, (int)(key-96)/k);
+        particle.gridIndex = 0;
   			particles.push_back(particle);
   			cout << "Particle added! Total particles: " << particles.size() << endl;
 			break;
@@ -1017,6 +1440,7 @@ void generateParticles(int number) {
 		Particle particle;
 		particle.position = glm::vec3(x+xMult*distance, y+yMult*distance, z+zMult*distance);
 		particle.velocity = glm::vec3((float)(number%5), -1*((float)(number%7)), (float)(number%11));
+    particle.gridIndex = 0;
 		//particle.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
 		particles.push_back(particle);
 		zMult--;
@@ -1085,12 +1509,13 @@ void myDisplay() {
     glColor3f(0.0, 1.0, 0);
     glMatrixMode(GL_PROJECTION);                  
     glLoadIdentity();                            
-    gluPerspective(40.0f, viewport.w/viewport.h, 0.1f, 100.0f);
+    gluPerspective(45.0f, viewport.w/viewport.h, 0.1, 100.0f);
     /*
     gluPerspective(fov * zoom, aspect_ratio, z_near, z_far);
     */
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity(); // make sure transformation is "zero'd"
+    gluLookAt(1.0, 1.75, 5.0f, 1.0, 0.5f, 0, 0, 1, 0);
     /* Main Rendering loop: uses naive neighbor calculation ==> O(n^2) */
     setupParticles();
     calculateParticleDensities();
@@ -1102,13 +1527,16 @@ void myDisplay() {
     drawBoundingBox();
     //drawBackground();
     //Scene cleanup
-  /*
-    findMinParticlePositions();
+    //findMinParticlePositions();
 
     //Testing Neighbors algorithm
     grid.clearGrid();
     grid.updateGrid(particles);
-  */
+    for (int j = 0; j < particles.size(); j++) {
+      if (particles[j].gridIndex > 0) {
+        cout << "hits" << endl;
+      }
+    }
     glFlush();
     glutSwapBuffers();// swap buffers (we earlier set double buffer)
   }
@@ -1175,7 +1603,11 @@ int main(int argc, char *argv[]) {
   //This tells glut to use a double-bufferd window with red, green, and blue channels 
   glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
   // Initalize theviewport size
-  box = BoundingBox(glm::vec3(-.75,-.75,-3), 1.5);
+  //box = BoundingBox(glm::vec3(-.75,-.75,-3), 1.5);
+  box = BoundingBox(glm::vec3(0, 0, 2), 2.0);
+  grid = Grid(0.0f, 2.0f, SMOOTHING_LENGTH);
+  grid.initialize();
+  grid.updateGrid(particles);
   viewport.w = VIEWPORT_WIDTH;
   viewport.h = VIEWPORT_HEIGHT;
   //Parse input file: where OBJ files are parsed
