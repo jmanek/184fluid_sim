@@ -266,13 +266,16 @@ void Grid::validateCubeIndex(int k) {
 
 //****************************************************
 // Get the nearest neighbors in a cube
+// Note: code/cube indices based off of pg. 29 of 
+// Auer's neighbor search algorithm. An explanation
+// is provided in the paper as to how to compute the potential 27 values 
+// found in the cases.  
 //****************************************************
 
 vector<int > Grid::generateNeighbors(int box_index, int cube_length) {
   vector<int > neighbors;
   int cube_length_squared = cube_length * cube_length;
   int total_cube_size = cube_length_squared * cube_length;
-
 
   // Back Face 
   if (box_index < cube_length_squared) {
@@ -890,6 +893,7 @@ float CURRENT_TIME = 0.0f;
 float PARTICLE_MASS = 1.05f;
 
 float SMOOTHING_LENGTH = 0.05;
+//float SMOOTHING_LENGTH = 0.25;
 
 float K = 5.0f;
 float REST_DENSITY = 100.0f;
@@ -1639,6 +1643,8 @@ int main(int argc, char *argv[]) {
   glutInitWindowPosition(0, 0);
   glutCreateWindow("Fluid Simulator");
   initScene();                                 // quick function to set up scene
+  grid.initialize();
+  grid.updateGrid(particles);
   glutDisplayFunc(myDisplay);                  // function to run when its time to draw something
   glutKeyboardFunc(getKeys);
   glutSpecialFunc(getSpecialKeys);
