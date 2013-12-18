@@ -961,26 +961,14 @@ void calculateParticleDensities() {
   float h = SMOOTHING_LENGTH;
 
   for (int i = 0; i < (signed)particles.size(); i++) {
-    //cout << "Grid index: " << particles[i].gridIndex << endl;
     vector<int > neighbors = grid.consolidateNeighbors(particles[i].gridIndex);
-    /*
-    for (int l = 0; l < neighbors.size(); l++) {
-      cout << "Neighbor for index at : " << i << ": " << l << endl;
-    }
-    */
-    //for (int j = 0; j < (signed)particles.size(); j++) {
     for (int j = 0; j < neighbors.size(); j++) {
+      if (particles[i].position.x == particles[neighbors[j]].position.x && particles[i].position.y == particles[neighbors[j]].position.y && particles[i].position.z == particles[neighbors[j]].position.z){
+        continue;
+      }
+      float R = vec3dist(particles[i].position, particles[neighbors[j]].position);      
+      glm::vec3 r = particles[i].position - particles[neighbors[j]].position;
 
-      /*
-      if (i == j) {
-        continue;
-      }
-      */
-      if (particles[i].position.x == particles[j].position.x && particles[i].position.y == particles[j].position.y && particles[i].position.z == particles[j].position.z){
-        continue;
-      }
-      float R = vec3dist(particles[i].position, particles[j].position);      
-      glm::vec3 r = particles[i].position - particles[j].position;
       if (R <= h) {
       	particles[i].density = particles[i].density + PARTICLE_MASS * w_poly6(r, R, h);
       }
@@ -989,7 +977,6 @@ void calculateParticleDensities() {
 }
 
 
-//BS value. Might want to actually replace with proper value, if possible.
 float GAS_CONSTANT = 8.314462;
 float eta = 0.0008;
 //float eta = 200;
@@ -1010,9 +997,11 @@ void calculateParticleForces() {
         continue;
       }
       */
+      /*
       if (particles[i].position.x == particles[j].position.x && particles[i].position.y == particles[j].position.y && particles[i].position.z == particles[j].position.z){
         continue;
       }
+      */
     /*
 		for (int j = 0; j < (signed)particles.size(); j++) {
 			if (i == j) {
@@ -1020,21 +1009,22 @@ void calculateParticleForces() {
 			}
       */
 
-      glm::vec3 r = particles[i].position - particles[j].position;
-      float R = vec3dist(particles[i].position, particles[j].position);
+      if (particles[i].position.x == particles[neighbors[j]].position.x && particles[i].position.y == particles[neighbors[j]].position.y && particles[i].position.z == particles[neighbors[j]].position.z){
+        continue;
+      }
+
+      glm::vec3 r = particles[i].position - particles[neighbors[j]].position;
+      float R = vec3dist(particles[i].position, particles[neighbors[j]].position);
 
 			if (R <= h) {
 				float density_p = particles[i].density;
-				float density_n = particles[j].density;
-        //cout << "Density_p for " << i << ": " << density_p << endl;
-        //cout << "Density_n: for " << j << ": " << density_n << endl;
-				// float pressure_p = GAS_CONSTANT * (density_p - REST_DENSITY);
-				// float pressure_n = GAS_CONSTANT * (density_n - REST_DENSITY);
+
+        float density_n = particles[neighbors[j]].density;
         float pressure_p = K * (density_p - REST_DENSITY);
         float pressure_n = K * (density_n - REST_DENSITY);
 
 				particles[i].pressure = particles[i].pressure + (w_pressure_gradient(r, R, h) * (PARTICLE_MASS) * (pressure_p + pressure_n)/(2 * density_n));
-				particles[i].viscosity = particles[i].viscosity + eta * PARTICLE_MASS * ((particles[j].velocity - particles[i].velocity) / density_n) * w_viscosity_laplacian(r, R, h);
+        particles[i].viscosity = particles[i].viscosity + eta * PARTICLE_MASS * ((particles[neighbors[j]].velocity - particles[i].velocity) / density_n) * w_viscosity_laplacian(r, R, h);
 				particles[i].cfLap = particles[i].cfLap + PARTICLE_MASS / density_n * w_poly6_laplacian(r, R, h);
 				particles[i].cfGrad = particles[i].cfGrad + PARTICLE_MASS / density_n * w_poly6_gradient(r, R, h);
 			}
@@ -1120,7 +1110,6 @@ void findMinParticlePositions() {
 
 }
 
-
 //****************************************************
 // Loops through particles and updates their positions
 //****************************************************
@@ -1141,12 +1130,10 @@ void updateParticlePositions() {
 
  
     glm::vec3 particle_pressure = particles[i].pressure;
-    //surface_tension = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 viscosity = particles[i].viscosity;
-    //glm::vec3 viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
-    //cout << "viscosity: " << viscosity.x << " " << viscosity.y << " " << viscosity.z << endl;
     glm::vec3 total_force = particle_pressure + viscosity + surface_tension;
     glm::vec3 acceleration = (total_force / particles[i].density) * TIME_STEP + GRAVITY;
+
     //calculate new velocity
     particles[i].velocity = particles[i].velocity + acceleration * TIME_STEP;
 
@@ -1167,9 +1154,6 @@ void updateParticlePositions() {
     particles[i].position = particles[i].position + (particles[i].velocity * TIME_STEP);
     }
   } 
-	//cout<<"TIME: " << CURRENT_TIME<<"\n:;
-	//cout<<"POS:"<<' '<<particles[1].position[0]<<' '<<particles[1].position[1]<<' '<<particles[1].position[2]<<'\n';
-	//cout<<"VEL:"<<' '<<particles[1].velocity[0]<<' '<<particles[1].velocity[1]<<' '<<particles[1].velocity[2]<<'\n';
 }
 
 
